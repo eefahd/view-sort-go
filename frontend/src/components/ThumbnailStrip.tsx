@@ -16,7 +16,7 @@ export function ThumbnailStrip() {
     GetNearbyImages(10).then((imgs) => {
       if (imgs) setThumbnails(imgs);
     });
-  }, [state.currentImage?.index, state.currentImage?.total]);
+  }, [state.currentImage?.index, state.currentImage?.total, state.workingDir]);
 
   useEffect(() => {
     if (!stripRef.current || !state.currentImage) return;

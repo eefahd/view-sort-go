@@ -4,7 +4,7 @@ A lightweight desktop app for viewing and sorting images into folders using keyb
 
 Built with [Wails v2](https://wails.io/) (Go + React/TypeScript).
 
-![Screenshot](docs/screenshot.png)
+![Screenshot](docs/screenshot.jpg)
 
 ## Features
 
