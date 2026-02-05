@@ -149,10 +149,64 @@ func (s *ImageService) ReinsertImage(filename string) {
 	s.images[idx] = filename
 	s.processed--
 
-	// Adjust current index if we inserted before or at it
-	if idx <= s.currentIndex && len(s.images) > 1 {
-		s.currentIndex++
+	// Navigate to the reinserted image
+	s.currentIndex = idx
+}
+
+func (s *ImageService) GoToImage(index int) *models.ImageInfo {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.images) == 0 {
+		return nil
 	}
+	if index < 0 {
+		index = 0
+	}
+	if index >= len(s.images) {
+		index = len(s.images) - 1
+	}
+	s.currentIndex = index
+	return &models.ImageInfo{
+		Filename: s.images[s.currentIndex],
+		Path:     filepath.Join(s.workingDir, s.images[s.currentIndex]),
+		Index:    s.currentIndex,
+		Total:    len(s.images),
+	}
+}
+
+func (s *ImageService) GetNearbyImages(count int) []models.ImageInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if len(s.images) == 0 {
+		return nil
+	}
+
+	half := count / 2
+	start := s.currentIndex - half
+	if start < 0 {
+		start = 0
+	}
+	end := start + count
+	if end > len(s.images) {
+		end = len(s.images)
+		start = end - count
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	result := make([]models.ImageInfo, 0, end-start)
+	for i := start; i < end; i++ {
+		result = append(result, models.ImageInfo{
+			Filename: s.images[i],
+			Path:     filepath.Join(s.workingDir, s.images[i]),
+			Index:    i,
+			Total:    len(s.images),
+		})
+	}
+	return result
 }
 
 func (s *ImageService) GetWorkingDir() string {

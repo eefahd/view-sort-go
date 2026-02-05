@@ -102,6 +102,14 @@ func (a *App) GetImageCounts() models.ImageCounts {
 	return a.imageService.GetCounts()
 }
 
+func (a *App) GoToImage(index int) *models.ImageInfo {
+	return a.imageService.GoToImage(index)
+}
+
+func (a *App) GetNearbyImages(count int) []models.ImageInfo {
+	return a.imageService.GetNearbyImages(count)
+}
+
 func (a *App) GetWorkingDirectory() string {
 	return a.imageService.GetWorkingDir()
 }

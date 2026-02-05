@@ -16,11 +16,15 @@ export function GetImageCounts():Promise<models.ImageCounts>;
 
 export function GetLastWorkingDir():Promise<string>;
 
+export function GetNearbyImages(arg1:number):Promise<Array<models.ImageInfo>>;
+
 export function GetProfiles():Promise<Array<models.Profile>>;
 
 export function GetUndoCount():Promise<number>;
 
 export function GetWorkingDirectory():Promise<string>;
+
+export function GoToImage(arg1:number):Promise<models.ImageInfo>;
 
 export function NextImage():Promise<models.ImageInfo>;
 

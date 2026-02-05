@@ -1,19 +1,32 @@
-# README
+# ViewSortGo
 
-## About
+A lightweight desktop app for viewing and sorting images into folders using keyboard shortcuts.
 
-This is the official Wails React-TS template.
+Built with [Wails v2](https://wails.io/) (Go + React/TypeScript).
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+![Screenshot](docs/screenshot.png)
 
-## Live Development
+## Features
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+- **Keyboard-driven sorting** — Assign keys to move/copy images to destination folders
+- **Profiles** — Save different shortcut configurations for different workflows
+- **Thumbnail strip** — Quick navigation via thumbnail previews
+- **Undo** — Reverse file operations with Ctrl+Z
 
-## Building
+## Build
 
-To build a redistributable, production mode package, use `wails build`.
+Requires [Go 1.21+](https://go.dev/) and [Wails CLI](https://wails.io/docs/gettingstarted/installation).
+
+```sh
+wails build
+```
+
+Development with hot reload:
+
+```sh
+wails dev
+```
+
+## License
+
+MIT

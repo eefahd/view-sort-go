@@ -6,6 +6,8 @@ import {
   GetImageCounts,
   GetUndoCount,
   Undo,
+  NextImage,
+  PreviousImage,
 } from "../../wailsjs/go/main/App";
 
 export function Toolbar() {
@@ -37,6 +39,24 @@ export function Toolbar() {
     }
   };
 
+  const handlePrev = async () => {
+    try {
+      const img = await PreviousImage();
+      dispatch({ type: "SET_CURRENT_IMAGE", image: img });
+    } catch (err: any) {
+      showToast(err?.toString() || "Navigation failed");
+    }
+  };
+
+  const handleNext = async () => {
+    try {
+      const img = await NextImage();
+      dispatch({ type: "SET_CURRENT_IMAGE", image: img });
+    } catch (err: any) {
+      showToast(err?.toString() || "Navigation failed");
+    }
+  };
+
   const handleSettings = () => {
     dispatch({ type: "SET_PAGE", page: "settings" });
   };
@@ -45,6 +65,23 @@ export function Toolbar() {
     <div className="toolbar">
       <button onClick={handleSelectFolder}>Open Folder</button>
       <ProfileSelector />
+      <button
+        onClick={handlePrev}
+        disabled={!state.currentImage || state.currentImage.index === 0}
+        title="Previous image"
+      >
+        &lt;
+      </button>
+      <button
+        onClick={handleNext}
+        disabled={
+          !state.currentImage ||
+          state.currentImage.index >= state.currentImage.total - 1
+        }
+        title="Next image"
+      >
+        &gt;
+      </button>
       <div className="toolbar-spacer" />
       <button onClick={handleUndo} disabled={state.undoCount === 0}>
         Undo ({state.undoCount})

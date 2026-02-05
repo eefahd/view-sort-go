@@ -30,6 +30,10 @@ export function GetLastWorkingDir() {
   return window['go']['main']['App']['GetLastWorkingDir']();
 }
 
+export function GetNearbyImages(arg1) {
+  return window['go']['main']['App']['GetNearbyImages'](arg1);
+}
+
 export function GetProfiles() {
   return window['go']['main']['App']['GetProfiles']();
 }
@@ -40,6 +44,10 @@ export function GetUndoCount() {
 
 export function GetWorkingDirectory() {
   return window['go']['main']['App']['GetWorkingDirectory']();
+}
+
+export function GoToImage(arg1) {
+  return window['go']['main']['App']['GoToImage'](arg1);
 }
 
 export function NextImage() {
