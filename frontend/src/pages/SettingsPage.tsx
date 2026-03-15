@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { ShortcutTable } from "../components/ShortcutTable";
+import { FunctionButtonTable } from "../components/FunctionButtonTable";
+import { models } from "../../wailsjs/go/models";
 import {
   GetProfiles,
   CreateProfile,
   DeleteProfile,
   GetActiveProfile,
+  UpdateProfile,
 } from "../../wailsjs/go/main/App";
 
 export function SettingsPage() {
   const { state, dispatch, showToast } = useAppContext();
   const [newProfileName, setNewProfileName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const refreshProfiles = async () => {
     const profiles = await GetProfiles();
@@ -42,6 +47,31 @@ export function SettingsPage() {
     } catch (err: any) {
       showToast(err?.toString() || "Failed to delete profile");
     }
+  };
+
+  const handleSelectProfile = (id: string) => {
+    dispatch({ type: "SET_ACTIVE_PROFILE_ID", id });
+  };
+
+  const handleStartRename = (id: string, name: string) => {
+    setEditingId(id);
+    setEditingName(name);
+  };
+
+  const handleFinishRename = async (profile: models.Profile) => {
+    const name = editingName.trim();
+    if (!name || name === profile.name) {
+      setEditingId(null);
+      return;
+    }
+    try {
+      const updated = new models.Profile({ ...profile, name });
+      await UpdateProfile(updated);
+      await refreshProfiles();
+    } catch (err: any) {
+      showToast(err?.toString() || "Failed to rename");
+    }
+    setEditingId(null);
   };
 
   const handleBack = () => {
@@ -78,14 +108,46 @@ export function SettingsPage() {
             <div
               key={p.id}
               className={`profile-item ${p.id === state.activeProfileId ? "active" : ""}`}
+              onClick={() => handleSelectProfile(p.id)}
             >
-              <span>{p.name}</span>
-              <button
-                className="remove-btn"
-                onClick={() => handleDeleteProfile(p.id, p.name)}
-              >
-                Delete
-              </button>
+              {editingId === p.id ? (
+                <input
+                  className="profile-rename-input"
+                  type="text"
+                  value={editingName}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleFinishRename(p);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  onBlur={() => handleFinishRename(p)}
+                />
+              ) : (
+                <span>{p.name}</span>
+              )}
+              <div className="profile-actions">
+                <button
+                  className="edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartRename(p.id, p.name);
+                  }}
+                  title="Rename profile"
+                >
+                  Rename
+                </button>
+                <button
+                  className="remove-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteProfile(p.id, p.name);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
           {state.profiles.length === 0 && (
@@ -99,7 +161,59 @@ export function SettingsPage() {
           <h3>
             Shortcuts for "{activeProfile.name}"
           </h3>
+          <div className="label-mode-selector">
+            <span>Label mode:</span>
+            <label>
+              <input
+                type="radio"
+                name="labelMode"
+                value="single"
+                checked={activeProfile.labelMode !== "multi"}
+                onChange={async () => {
+                  const updated = new models.Profile({
+                    ...activeProfile,
+                    labelMode: "single",
+                  });
+                  await UpdateProfile(updated);
+                  await refreshProfiles();
+                }}
+              />
+              Single
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="labelMode"
+                value="multi"
+                checked={activeProfile.labelMode === "multi"}
+                onChange={async () => {
+                  const updated = new models.Profile({
+                    ...activeProfile,
+                    labelMode: "multi",
+                  });
+                  await UpdateProfile(updated);
+                  await refreshProfiles();
+                }}
+              />
+              Multi
+            </label>
+          </div>
           <ShortcutTable
+            profile={activeProfile}
+            onProfileUpdated={refreshProfiles}
+          />
+        </section>
+      )}
+
+      {activeProfile && (
+        <section className="settings-section">
+          <h3>
+            Function Buttons for "{activeProfile.name}"
+          </h3>
+          <p className="muted" style={{ marginBottom: 8, fontSize: 12 }}>
+            Use <code>$image_path</code> in commands as a placeholder for the current image path.
+          </p>
+          <FunctionButtonTable
             profile={activeProfile}
             onProfileUpdated={refreshProfiles}
           />

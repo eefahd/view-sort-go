@@ -1,5 +1,19 @@
 export namespace models {
 	
+	export class FunctionButton {
+	    label: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FunctionButton(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.label = source["label"];
+	        this.command = source["command"];
+	    }
+	}
 	export class ImageCounts {
 	    remaining: number;
 	    processed: number;
@@ -53,7 +67,9 @@ export namespace models {
 	export class Profile {
 	    id: string;
 	    name: string;
+	    labelMode: string;
 	    shortcuts: Shortcut[];
+	    functionButtons: FunctionButton[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Profile(source);
@@ -63,7 +79,9 @@ export namespace models {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.labelMode = source["labelMode"];
 	        this.shortcuts = this.convertValues(source["shortcuts"], Shortcut);
+	        this.functionButtons = this.convertValues(source["functionButtons"], FunctionButton);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

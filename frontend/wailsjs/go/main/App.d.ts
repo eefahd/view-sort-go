@@ -6,6 +6,10 @@ export function CreateProfile(arg1:string):Promise<models.Profile>;
 
 export function DeleteProfile(arg1:string):Promise<void>;
 
+export function ExecuteFunctionButton(arg1:number):Promise<void>;
+
+export function ExecuteMultiLabel(arg1:Array<string>):Promise<models.ImageInfo>;
+
 export function ExecuteShortcut(arg1:string):Promise<models.ImageInfo>;
 
 export function GetActiveProfile():Promise<models.Profile>;
@@ -14,6 +18,8 @@ export function GetCurrentImageInfo():Promise<models.ImageInfo>;
 
 export function GetImageCounts():Promise<models.ImageCounts>;
 
+export function GetImageLabels(arg1:string):Promise<Array<string>>;
+
 export function GetLastWorkingDir():Promise<string>;
 
 export function GetNearbyImages(arg1:number):Promise<Array<models.ImageInfo>>;
@@ -21,6 +27,8 @@ export function GetNearbyImages(arg1:number):Promise<Array<models.ImageInfo>>;
 export function GetProfiles():Promise<Array<models.Profile>>;
 
 export function GetUndoCount():Promise<number>;
+
+export function GetViewMode():Promise<string>;
 
 export function GetWorkingDirectory():Promise<string>;
 
@@ -35,6 +43,8 @@ export function SelectDestinationFolder():Promise<string>;
 export function SelectWorkingDirectory():Promise<string>;
 
 export function SetActiveProfile(arg1:string):Promise<void>;
+
+export function SetViewMode(arg1:string):Promise<models.ImageInfo>;
 
 export function SetWorkingDirectory(arg1:string):Promise<void>;
 

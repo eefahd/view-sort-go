@@ -3,8 +3,9 @@ package models
 type ActionType string
 
 const (
-	ActionCopy ActionType = "copy"
-	ActionMove ActionType = "move"
+	ActionCopy  ActionType = "copy"
+	ActionMove  ActionType = "move"
+	ActionLabel ActionType = "label"
 )
 
 type Shortcut struct {
@@ -14,10 +15,17 @@ type Shortcut struct {
 	Destination string     `json:"destination"`
 }
 
+type FunctionButton struct {
+	Label   string `json:"label"`
+	Command string `json:"command"` // use $image_path as placeholder
+}
+
 type Profile struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Shortcuts []Shortcut `json:"shortcuts"`
+	ID              string           `json:"id"`
+	Name            string           `json:"name"`
+	LabelMode       string           `json:"labelMode"`
+	Shortcuts       []Shortcut       `json:"shortcuts"`
+	FunctionButtons []FunctionButton `json:"functionButtons"`
 }
 
 type UndoEntry struct {

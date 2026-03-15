@@ -19,13 +19,19 @@ var imageExtensions = map[string]bool{
 type ImageService struct {
 	mu           sync.RWMutex
 	workingDir   string
-	images       []string
+	allImages    []string          // all image files found on disk
+	images       []string          // currently visible (filtered) list
+	annotated    map[string]bool   // set of annotated filenames
+	viewMode     string            // "pending" or "all"
 	currentIndex int
 	processed    int
 }
 
 func NewImageService() *ImageService {
-	return &ImageService{}
+	return &ImageService{
+		viewMode:  "pending",
+		annotated: make(map[string]bool),
+	}
 }
 
 func (s *ImageService) LoadDirectory(dir string) error {
@@ -37,22 +43,130 @@ func (s *ImageService) LoadDirectory(dir string) error {
 		return err
 	}
 
-	s.images = nil
+	s.allImages = nil
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
 		ext := strings.ToLower(filepath.Ext(entry.Name()))
 		if imageExtensions[ext] {
-			s.images = append(s.images, entry.Name())
+			s.allImages = append(s.allImages, entry.Name())
 		}
 	}
 
-	sort.Strings(s.images)
+	sort.Strings(s.allImages)
 	s.workingDir = dir
 	s.currentIndex = 0
 	s.processed = 0
+	s.rebuildFiltered()
 	return nil
+}
+
+func (s *ImageService) SetAnnotated(annotated map[string]bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.annotated = annotated
+	s.processed = len(annotated)
+	s.rebuildFiltered()
+}
+
+func (s *ImageService) MarkAnnotated(filename string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.annotated[filename] = true
+	s.processed = len(s.annotated)
+	oldFilename := ""
+	if s.currentIndex < len(s.images) {
+		oldFilename = s.images[s.currentIndex]
+	}
+	s.rebuildFiltered()
+	// Try to stay on the same image or advance naturally
+	if oldFilename != "" {
+		for i, name := range s.images {
+			if name == oldFilename {
+				s.currentIndex = i
+				return
+			}
+		}
+	}
+	// Image was filtered out — stay at same index (auto-advance)
+	if s.currentIndex >= len(s.images) && len(s.images) > 0 {
+		s.currentIndex = len(s.images) - 1
+	}
+}
+
+func (s *ImageService) UnmarkAnnotated(filename string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.annotated, filename)
+	s.processed = len(s.annotated)
+	s.rebuildFiltered()
+	// Navigate to the un-annotated image
+	for i, name := range s.images {
+		if name == filename {
+			s.currentIndex = i
+			return
+		}
+	}
+}
+
+func (s *ImageService) SetViewMode(mode string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if mode != "all" && mode != "pending" {
+		mode = "pending"
+	}
+	oldFilename := ""
+	if len(s.images) > 0 && s.currentIndex < len(s.images) {
+		oldFilename = s.images[s.currentIndex]
+	}
+	s.viewMode = mode
+	s.rebuildFiltered()
+	// Try to keep the same image selected
+	if oldFilename != "" {
+		for i, name := range s.images {
+			if name == oldFilename {
+				s.currentIndex = i
+				return
+			}
+		}
+	}
+	if s.currentIndex >= len(s.images) && len(s.images) > 0 {
+		s.currentIndex = len(s.images) - 1
+	}
+}
+
+func (s *ImageService) GetViewMode() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.viewMode
+}
+
+// rebuildFiltered rebuilds s.images from s.allImages based on viewMode and annotations.
+// Must be called with s.mu held.
+func (s *ImageService) rebuildFiltered() {
+	if s.viewMode == "all" {
+		s.images = make([]string, len(s.allImages))
+		copy(s.images, s.allImages)
+	} else {
+		s.images = nil
+		for _, name := range s.allImages {
+			if !s.annotated[name] {
+				s.images = append(s.images, name)
+			}
+		}
+	}
+	if s.currentIndex >= len(s.images) {
+		if len(s.images) > 0 {
+			s.currentIndex = len(s.images) - 1
+		} else {
+			s.currentIndex = 0
+		}
+	}
 }
 
 func (s *ImageService) GetCurrentImage() *models.ImageInfo {
@@ -130,6 +244,15 @@ func (s *ImageService) RemoveCurrent() {
 		return
 	}
 
+	filename := s.images[s.currentIndex]
+	// Also remove from allImages
+	for i, name := range s.allImages {
+		if name == filename {
+			s.allImages = append(s.allImages[:i], s.allImages[i+1:]...)
+			break
+		}
+	}
+
 	s.images = append(s.images[:s.currentIndex], s.images[s.currentIndex+1:]...)
 	s.processed++
 
@@ -142,15 +265,21 @@ func (s *ImageService) ReinsertImage(filename string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Binary search for the right insertion position (alphabetical)
-	idx := sort.SearchStrings(s.images, filename)
-	s.images = append(s.images, "")
-	copy(s.images[idx+1:], s.images[idx:])
-	s.images[idx] = filename
+	// Reinsert into allImages
+	idx := sort.SearchStrings(s.allImages, filename)
+	s.allImages = append(s.allImages, "")
+	copy(s.allImages[idx+1:], s.allImages[idx:])
+	s.allImages[idx] = filename
 	s.processed--
 
-	// Navigate to the reinserted image
-	s.currentIndex = idx
+	// Rebuild filtered list and navigate to the image
+	s.rebuildFiltered()
+	for i, name := range s.images {
+		if name == filename {
+			s.currentIndex = i
+			return
+		}
+	}
 }
 
 func (s *ImageService) GoToImage(index int) *models.ImageInfo {

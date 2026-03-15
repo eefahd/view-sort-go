@@ -20,6 +20,8 @@ interface AppState {
   activeProfileId: string;
   undoCount: number;
   toast: string | null;
+  pendingLabels: string[];
+  viewMode: "all" | "pending";
 }
 
 type Action =
@@ -36,7 +38,10 @@ type Action =
       image: ImageInfo | null;
       counts: ImageCounts;
       undoCount: number;
-    };
+    }
+  | { type: "TOGGLE_LABEL"; key: string }
+  | { type: "CLEAR_LABELS" }
+  | { type: "SET_VIEW_MODE"; mode: "all" | "pending" };
 
 const initialState: AppState = {
   page: "viewer",
@@ -47,6 +52,8 @@ const initialState: AppState = {
   activeProfileId: "",
   undoCount: 0,
   toast: null,
+  pendingLabels: [],
+  viewMode: "pending",
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -56,7 +63,7 @@ function reducer(state: AppState, action: Action): AppState {
     case "SET_WORKING_DIR":
       return { ...state, workingDir: action.dir };
     case "SET_CURRENT_IMAGE":
-      return { ...state, currentImage: action.image };
+      return { ...state, currentImage: action.image, pendingLabels: [] };
     case "SET_COUNTS":
       return { ...state, counts: action.counts };
     case "SET_PROFILES":
@@ -74,6 +81,19 @@ function reducer(state: AppState, action: Action): AppState {
         counts: action.counts,
         undoCount: action.undoCount,
       };
+    case "TOGGLE_LABEL": {
+      const has = state.pendingLabels.includes(action.key);
+      return {
+        ...state,
+        pendingLabels: has
+          ? state.pendingLabels.filter((k) => k !== action.key)
+          : [...state.pendingLabels, action.key],
+      };
+    }
+    case "CLEAR_LABELS":
+      return { ...state, pendingLabels: [] };
+    case "SET_VIEW_MODE":
+      return { ...state, viewMode: action.mode };
     default:
       return state;
   }

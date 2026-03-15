@@ -7,4 +7,5 @@ export type Shortcut = models.Shortcut;
 export type ImageInfo = models.ImageInfo;
 export type ImageCounts = models.ImageCounts;
 
-export type ActionType = "copy" | "move";
+export type ActionType = "copy" | "move" | "label";
+export type LabelMode = "single" | "multi";

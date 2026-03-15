@@ -18,15 +18,25 @@ func NewProfileService(configMgr *config.ConfigManager) *ProfileService {
 }
 
 func (s *ProfileService) GetProfiles() []models.Profile {
-	return s.configMgr.GetProfiles()
+	profiles := s.configMgr.GetProfiles()
+	for i := range profiles {
+		if profiles[i].Shortcuts == nil {
+			profiles[i].Shortcuts = []models.Shortcut{}
+		}
+		if profiles[i].FunctionButtons == nil {
+			profiles[i].FunctionButtons = []models.FunctionButton{}
+		}
+	}
+	return profiles
 }
 
 func (s *ProfileService) CreateProfile(name string) (models.Profile, error) {
 	profiles := s.configMgr.GetProfiles()
 	profile := models.Profile{
-		ID:        uuid.New().String(),
-		Name:      name,
-		Shortcuts: []models.Shortcut{},
+		ID:              uuid.New().String(),
+		Name:            name,
+		Shortcuts:       []models.Shortcut{},
+		FunctionButtons: []models.FunctionButton{},
 	}
 	profiles = append(profiles, profile)
 	if err := s.configMgr.SetProfiles(profiles); err != nil {
@@ -79,6 +89,12 @@ func (s *ProfileService) GetActiveProfile() *models.Profile {
 	profiles := s.configMgr.GetProfiles()
 	for _, p := range profiles {
 		if p.ID == activeID {
+			if p.Shortcuts == nil {
+				p.Shortcuts = []models.Shortcut{}
+			}
+			if p.FunctionButtons == nil {
+				p.FunctionButtons = []models.FunctionButton{}
+			}
 			return &p
 		}
 	}

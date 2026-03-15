@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { ActionType } from "../types";
 import { models } from "../../wailsjs/go/models";
 import { FolderPicker } from "./FolderPicker";
@@ -19,11 +19,22 @@ export function ShortcutTable({
 }: ShortcutTableProps) {
   const { showToast } = useAppContext();
   const [capturingIndex, setCapturingIndex] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [localShortcuts, setLocalShortcuts] = useState<Shortcut[]>(
+    profile.shortcuts || []
+  );
 
-  const updateShortcuts = async (shortcuts: Shortcut[]) => {
+  useEffect(() => {
+    setLocalShortcuts(profile.shortcuts || []);
+  }, [profile.id, profile.shortcuts?.length]);
+
+  const saveShortcuts = async (shortcuts: Shortcut[]) => {
     const updated = new models.Profile({
       id: profile.id,
       name: profile.name,
+      labelMode: profile.labelMode,
+      functionButtons: profile.functionButtons,
       shortcuts,
     });
     try {
@@ -34,22 +45,66 @@ export function ShortcutTable({
     }
   };
 
-  const updateShortcut = (index: number, changes: Partial<Shortcut>) => {
-    const shortcuts = [...profile.shortcuts];
-    shortcuts[index] = { ...shortcuts[index], ...changes };
-    updateShortcuts(shortcuts);
+  const updateLocal = (index: number, changes: Partial<Shortcut>) => {
+    const updated = [...localShortcuts];
+    updated[index] = { ...updated[index], ...changes };
+    setLocalShortcuts(updated);
+  };
+
+  const updateAndSave = (index: number, changes: Partial<Shortcut>) => {
+    const updated = [...localShortcuts];
+    updated[index] = { ...updated[index], ...changes };
+    setLocalShortcuts(updated);
+    saveShortcuts(updated);
+  };
+
+  const handleBlur = () => {
+    saveShortcuts(localShortcuts);
   };
 
   const addShortcut = () => {
-    updateShortcuts([
-      ...profile.shortcuts,
+    const updated = [
+      ...localShortcuts,
       new models.Shortcut({ label: "", key: "", action: "copy", destination: "" }),
-    ]);
+    ];
+    setLocalShortcuts(updated);
+    saveShortcuts(updated);
   };
 
   const removeShortcut = (index: number) => {
-    const shortcuts = profile.shortcuts.filter((_, i) => i !== index);
-    updateShortcuts(shortcuts);
+    const updated = localShortcuts.filter((_, i) => i !== index);
+    setLocalShortcuts(updated);
+    saveShortcuts(updated);
+  };
+
+  const handleDragStart = (index: number) => {
+    dragIndexRef.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (index: number) => {
+    const from = dragIndexRef.current;
+    if (from === null || from === index) {
+      dragIndexRef.current = null;
+      setDragOverIndex(null);
+      return;
+    }
+    const shortcuts = [...localShortcuts];
+    const [moved] = shortcuts.splice(from, 1);
+    shortcuts.splice(index, 0, moved);
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+    setLocalShortcuts(shortcuts);
+    saveShortcuts(shortcuts);
+  };
+
+  const handleDragEnd = () => {
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
   };
 
   const handleKeyCapture = (index: number, e: React.KeyboardEvent) => {
@@ -61,7 +116,7 @@ export function ShortcutTable({
       return;
     }
     if (e.key.length === 1) {
-      updateShortcut(index, { key: e.key });
+      updateAndSave(index, { key: e.key });
       setCapturingIndex(null);
     }
   };
@@ -71,6 +126,7 @@ export function ShortcutTable({
       <table>
         <thead>
           <tr>
+            <th></th>
             <th>Label</th>
             <th>Key</th>
             <th>Action</th>
@@ -79,14 +135,26 @@ export function ShortcutTable({
           </tr>
         </thead>
         <tbody>
-          {profile.shortcuts.map((s, i) => (
-            <tr key={i}>
+          {localShortcuts.map((s, i) => (
+            <tr
+              key={i}
+              draggable
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={(e) => handleDragOver(e, i)}
+              onDrop={() => handleDrop(i)}
+              onDragEnd={handleDragEnd}
+              className={dragOverIndex === i ? "drag-over" : ""}
+            >
+              <td className="drag-handle" title="Drag to reorder">
+                ⠿
+              </td>
               <td>
                 <input
                   type="text"
                   value={s.label}
                   placeholder="Label..."
-                  onChange={(e) => updateShortcut(i, { label: e.target.value })}
+                  onChange={(e) => updateLocal(i, { label: e.target.value })}
+                  onBlur={handleBlur}
                 />
               </td>
               <td>
@@ -110,19 +178,20 @@ export function ShortcutTable({
                 <select
                   value={s.action}
                   onChange={(e) =>
-                    updateShortcut(i, {
+                    updateAndSave(i, {
                       action: e.target.value as ActionType,
                     })
                   }
                 >
                   <option value="copy">Copy</option>
                   <option value="move">Move</option>
+                  <option value="label">Label</option>
                 </select>
               </td>
               <td>
                 <FolderPicker
                   value={s.destination}
-                  onChange={(path) => updateShortcut(i, { destination: path })}
+                  onChange={(path) => updateAndSave(i, { destination: path })}
                 />
               </td>
               <td>

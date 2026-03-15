@@ -33,6 +33,30 @@
   flex: 1;
 }
 
+.fn-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+}
+
+.fn-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.view-mode-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.view-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 .profile-select {
   min-width: 140px;
 }
@@ -139,6 +163,47 @@
   white-space: nowrap;
 }
 
+.shortcut-btn.selected {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.shortcut-btn.applied {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.confirm-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-btn:hover {
+  opacity: 0.9;
+}
+
+.label-mode-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.label-mode-selector label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
 .action-badge {
   font-size: 10px;
   padding: 1px 5px;
@@ -154,6 +219,11 @@
 
 .action-badge.move {
   background: var(--move-badge);
+  color: #fff;
+}
+
+.action-badge.label {
+  background: var(--accent);
   color: #fff;
 }
 
@@ -320,10 +390,44 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-tertiary);
+  cursor: pointer;
+}
+
+.profile-item:hover {
+  background: var(--bg-secondary);
 }
 
 .profile-item.active {
   border-color: var(--accent);
+}
+
+.profile-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.edit-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+}
+
+.edit-btn:hover {
+  color: var(--accent);
+  background: transparent;
+}
+
+.profile-rename-input {
+  flex: 1;
+  font-size: 14px;
+  padding: 2px 4px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
 }
 
 /* Shortcut Table */
@@ -408,6 +512,27 @@
 .remove-btn:hover {
   color: var(--danger);
   background: transparent;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  text-align: center;
+  width: 24px;
+  user-select: none;
+  font-size: 14px;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.shortcut-table tr[draggable] {
+  transition: opacity 0.15s;
+}
+
+.shortcut-table tr.drag-over td {
+  border-top: 2px solid var(--accent);
 }
 
 .add-btn {

@@ -10,6 +10,14 @@ export function DeleteProfile(arg1) {
   return window['go']['main']['App']['DeleteProfile'](arg1);
 }
 
+export function ExecuteFunctionButton(arg1) {
+  return window['go']['main']['App']['ExecuteFunctionButton'](arg1);
+}
+
+export function ExecuteMultiLabel(arg1) {
+  return window['go']['main']['App']['ExecuteMultiLabel'](arg1);
+}
+
 export function ExecuteShortcut(arg1) {
   return window['go']['main']['App']['ExecuteShortcut'](arg1);
 }
@@ -26,6 +34,10 @@ export function GetImageCounts() {
   return window['go']['main']['App']['GetImageCounts']();
 }
 
+export function GetImageLabels(arg1) {
+  return window['go']['main']['App']['GetImageLabels'](arg1);
+}
+
 export function GetLastWorkingDir() {
   return window['go']['main']['App']['GetLastWorkingDir']();
 }
@@ -40,6 +52,10 @@ export function GetProfiles() {
 
 export function GetUndoCount() {
   return window['go']['main']['App']['GetUndoCount']();
+}
+
+export function GetViewMode() {
+  return window['go']['main']['App']['GetViewMode']();
 }
 
 export function GetWorkingDirectory() {
@@ -68,6 +84,10 @@ export function SelectWorkingDirectory() {
 
 export function SetActiveProfile(arg1) {
   return window['go']['main']['App']['SetActiveProfile'](arg1);
+}
+
+export function SetViewMode(arg1) {
+  return window['go']['main']['App']['SetViewMode'](arg1);
 }
 
 export function SetWorkingDirectory(arg1) {

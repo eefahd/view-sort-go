@@ -1,11 +1,13 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"view-sort-go/internal/models"
 )
@@ -61,6 +63,78 @@ func (a *MoveAction) Reverse(entry models.UndoEntry) error {
 	return os.Remove(entry.DestPath)
 }
 
+type LabelAction struct{}
+
+type labelAnnotation struct {
+	Image     string `json:"image"`
+	Label     string `json:"label"`
+	Timestamp string `json:"timestamp"`
+}
+
+func (a *LabelAction) Execute(src, destDir string) (string, error) {
+	imageFilename := filepath.Base(src)
+	ext := filepath.Ext(imageFilename)
+	jsonName := strings.TrimSuffix(imageFilename, ext) + ".json"
+	destPath := filepath.Join(destDir, jsonName)
+
+	annotation := labelAnnotation{
+		Image:     imageFilename,
+		Label:     filepath.Base(destDir),
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	data, err := json.MarshalIndent(annotation, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return "", err
+	}
+
+	if err := os.WriteFile(destPath, data, 0644); err != nil {
+		return "", err
+	}
+	return destPath, nil
+}
+
+func (a *LabelAction) Reverse(entry models.UndoEntry) error {
+	return os.Remove(entry.DestPath)
+}
+
+type multiLabelAnnotation struct {
+	Image     string   `json:"image"`
+	Labels    []string `json:"labels"`
+	Timestamp string   `json:"timestamp"`
+}
+
+func WriteMultiLabel(src string, labels []string, destDir string) (string, error) {
+	imageFilename := filepath.Base(src)
+	ext := filepath.Ext(imageFilename)
+	jsonName := strings.TrimSuffix(imageFilename, ext) + ".json"
+	destPath := filepath.Join(destDir, jsonName)
+
+	annotation := multiLabelAnnotation{
+		Image:     imageFilename,
+		Labels:    labels,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	data, err := json.MarshalIndent(annotation, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return "", err
+	}
+
+	if err := os.WriteFile(destPath, data, 0644); err != nil {
+		return "", err
+	}
+	return destPath, nil
+}
+
 type ActionRegistry struct {
 	actions map[models.ActionType]FileAction
 }
@@ -68,8 +142,9 @@ type ActionRegistry struct {
 func NewActionRegistry() *ActionRegistry {
 	return &ActionRegistry{
 		actions: map[models.ActionType]FileAction{
-			models.ActionCopy: &CopyAction{},
-			models.ActionMove: &MoveAction{},
+			models.ActionCopy:  &CopyAction{},
+			models.ActionMove:  &MoveAction{},
+			models.ActionLabel: &LabelAction{},
 		},
 	}
 }
