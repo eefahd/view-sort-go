@@ -3,9 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"math"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/rwcarlsen/goexif/exif"
+	_ "golang.org/x/image/webp"
 
 	"view-sort-go/internal/config"
 	"view-sort-go/internal/models"
@@ -13,6 +24,17 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+var imageExtensions = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
+	".bmp": true, ".webp": true, ".tiff": true, ".tif": true,
+	".heic": true, ".heif": true,
+}
+
+func isImageFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return imageExtensions[ext]
+}
 
 type App struct {
 	ctx                context.Context
@@ -22,6 +44,9 @@ type App struct {
 	undoService        *services.UndoService
 	profileService     *services.ProfileService
 	annotationsService *services.AnnotationsService
+
+	initialFileMu   sync.Mutex
+	initialFilePath string // file to open on first frontend load
 }
 
 func NewApp() *App {
@@ -48,6 +73,53 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+// SetInitialFile stores a file path to be opened once the frontend is ready (called before startup).
+func (a *App) SetInitialFile(path string) {
+	a.initialFileMu.Lock()
+	defer a.initialFileMu.Unlock()
+	a.initialFilePath = path
+}
+
+// HandleFileOpen is called by macOS OnFileOpen (Finder double-click / "Open With").
+// If the app is already running, open the file immediately; otherwise store it.
+func (a *App) HandleFileOpen(path string) {
+	if !isImageFile(path) {
+		return
+	}
+	a.initialFileMu.Lock()
+	a.initialFilePath = path
+	a.initialFileMu.Unlock()
+
+	// If the app is already started, emit event so frontend reacts immediately.
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "open-file", path)
+	}
+}
+
+// GetInitialFile returns the file path passed on launch (CLI arg or first file open event),
+// then clears it so it's only consumed once.
+func (a *App) GetInitialFile() string {
+	a.initialFileMu.Lock()
+	defer a.initialFileMu.Unlock()
+	path := a.initialFilePath
+	a.initialFilePath = ""
+	return path
+}
+
+// OpenImageFile loads the directory containing the given image file and navigates to it.
+func (a *App) OpenImageFile(path string) error {
+	dir := filepath.Dir(path)
+	filename := filepath.Base(path)
+	if err := a.imageService.LoadDirectory(dir); err != nil {
+		return err
+	}
+	a.undoService.Clear()
+	a.configMgr.SetLastWorkingDir(dir)
+	a.loadAnnotations(dir)
+	a.imageService.NavigateToFile(filename)
+	return nil
 }
 
 // loadAnnotations loads annotations and applies them to the image service filter.
@@ -326,3 +398,98 @@ func (a *App) ExecuteFunctionButton(index int) error {
 	cmd.Dir = a.imageService.GetWorkingDir()
 	return cmd.Start()
 }
+
+// --- Image Metadata ---
+
+func (a *App) GetImageMetadata() *models.ImageMetadata {
+	info := a.imageService.GetCurrentImage()
+	if info == nil {
+		return nil
+	}
+	path := info.Path
+
+	meta := &models.ImageMetadata{
+		Filename: info.Filename,
+		Format:   strings.ToLower(strings.TrimPrefix(filepath.Ext(info.Filename), ".")),
+	}
+
+	// File stat
+	if fi, err := os.Stat(path); err == nil {
+		meta.FileSize = fi.Size()
+		meta.ModifiedAt = fi.ModTime().Format(time.RFC3339)
+	}
+
+	// Image dimensions
+	if f, err := os.Open(path); err == nil {
+		if cfg, _, err := image.DecodeConfig(f); err == nil {
+			meta.Width = cfg.Width
+			meta.Height = cfg.Height
+		}
+		f.Close()
+	}
+
+	// EXIF data
+	if f, err := os.Open(path); err == nil {
+		if x, err := exif.Decode(f); err == nil {
+			meta.CameraMake = exifStr(x, exif.Make)
+			meta.CameraModel = exifStr(x, exif.Model)
+			meta.LensModel = exifStr(x, exif.LensModel)
+			meta.ISO = exifStr(x, exif.ISOSpeedRatings)
+			meta.Flash = exifStr(x, exif.Flash)
+
+			// Date taken
+			if t, err := x.DateTime(); err == nil {
+				meta.DateTaken = t.Format(time.RFC3339)
+			}
+
+			// Focal length: rational → "50mm"
+			if tag, err := x.Get(exif.FocalLength); err == nil {
+				if num, den, err := tag.Rat2(0); err == nil && den != 0 {
+					meta.FocalLength = fmt.Sprintf("%.0fmm", float64(num)/float64(den))
+				}
+			}
+
+			// Aperture: FNumber rational → f/N
+			if tag, err := x.Get(exif.FNumber); err == nil {
+				if num, den, err := tag.Rat2(0); err == nil && den != 0 {
+					meta.Aperture = fmt.Sprintf("f/%.1g", float64(num)/float64(den))
+				}
+			}
+
+			// Shutter speed: ExposureTime rational → "1/250s"
+			if tag, err := x.Get(exif.ExposureTime); err == nil {
+				if num, den, err := tag.Rat2(0); err == nil && den != 0 {
+					if num == 1 {
+						meta.ShutterSpeed = fmt.Sprintf("1/%ds", den)
+					} else {
+						meta.ShutterSpeed = fmt.Sprintf("%.4fs", float64(num)/float64(den))
+					}
+				}
+			}
+
+			// GPS
+			if lat, lon, err := x.LatLong(); err == nil {
+				meta.GPSLat = math.Round(lat*1e6) / 1e6
+				meta.GPSLon = math.Round(lon*1e6) / 1e6
+				meta.HasGPS = true
+			}
+		}
+		f.Close()
+	}
+
+	return meta
+}
+
+// exifStr reads a string EXIF tag, returning "" on error.
+func exifStr(x *exif.Exif, field exif.FieldName) string {
+	tag, err := x.Get(field)
+	if err != nil {
+		return ""
+	}
+	s, err := tag.StringVal()
+	if err != nil {
+		return strings.Trim(tag.String(), `"`)
+	}
+	return strings.TrimSpace(s)
+}
+

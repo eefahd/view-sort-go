@@ -23,6 +23,40 @@
         <string>true</string>
         <key>NSHumanReadableCopyright</key>
         <string>{{.Info.Copyright}}</string>
+        <key>CFBundleDocumentTypes</key>
+        <array>
+            <dict>
+                <key>CFBundleTypeExtensions</key>
+                <array>
+                    <string>jpg</string>
+                    <string>jpeg</string>
+                    <string>png</string>
+                    <string>gif</string>
+                    <string>bmp</string>
+                    <string>webp</string>
+                    <string>tiff</string>
+                    <string>tif</string>
+                    <string>heic</string>
+                    <string>heif</string>
+                </array>
+                <key>CFBundleTypeName</key>
+                <string>Image File</string>
+                <key>CFBundleTypeRole</key>
+                <string>Viewer</string>
+                <key>LSHandlerRank</key>
+                <string>Alternate</string>
+            </dict>
+        </array>
+        <key>LSItemContentTypes</key>
+        <array>
+            <string>public.jpeg</string>
+            <string>public.png</string>
+            <string>com.compuserve.gif</string>
+            <string>com.microsoft.bmp</string>
+            <string>org.webmproject.webp</string>
+            <string>public.tiff</string>
+            <string>public.heic</string>
+        </array>
         {{if .Info.FileAssociations}}
         <key>CFBundleDocumentTypes</key>
         <array>

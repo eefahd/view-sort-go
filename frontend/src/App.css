@@ -115,6 +115,72 @@
   text-align: center;
 }
 
+/* Shared panel styles */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.panel-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.panel-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.panel-toggle-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.panel-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  background: var(--bg-secondary);
+  gap: 8px;
+  user-select: none;
+}
+
+.panel-collapsed-right {
+  border-left: 1px solid var(--border);
+  width: 28px;
+  min-width: 28px;
+}
+
+.panel-collapsed-left {
+  border-right: 1px solid var(--border);
+  width: 28px;
+  min-width: 28px;
+}
+
+.panel-collapsed-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
 /* Label Panel */
 .label-panel {
   width: 220px;
@@ -125,13 +191,64 @@
   overflow-y: auto;
 }
 
-.label-panel h3 {
-  font-size: 13px;
-  font-weight: 600;
+/* Info Panel */
+.info-panel {
+  width: 220px;
+  min-width: 220px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.info-loading {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-section-title {
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.info-label {
   color: var(--text-secondary);
-  margin-bottom: 10px;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.info-value {
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-all;
+  font-variant-numeric: tabular-nums;
 }
 
 .shortcut-list {

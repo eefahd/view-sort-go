@@ -14,6 +14,7 @@ var imageExtensions = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true,
 	".gif": true, ".webp": true, ".bmp": true,
 	".tiff": true, ".tif": true,
+	".heic": true, ".heif": true,
 }
 
 type ImageService struct {
@@ -351,6 +352,18 @@ func (s *ImageService) GetCurrentFilePath() string {
 		return ""
 	}
 	return filepath.Join(s.workingDir, s.images[s.currentIndex])
+}
+
+// NavigateToFile sets the current index to the given filename if it exists in the filtered list.
+func (s *ImageService) NavigateToFile(filename string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, name := range s.images {
+		if name == filename {
+			s.currentIndex = i
+			return
+		}
+	}
 }
 
 func (s *ImageService) GetCurrentFilename() string {

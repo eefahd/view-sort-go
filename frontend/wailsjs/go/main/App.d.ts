@@ -20,6 +20,10 @@ export function GetImageCounts():Promise<models.ImageCounts>;
 
 export function GetImageLabels(arg1:string):Promise<Array<string>>;
 
+export function GetImageMetadata():Promise<models.ImageMetadata>;
+
+export function GetInitialFile():Promise<string>;
+
 export function GetLastWorkingDir():Promise<string>;
 
 export function GetNearbyImages(arg1:number):Promise<Array<models.ImageInfo>>;
@@ -34,7 +38,11 @@ export function GetWorkingDirectory():Promise<string>;
 
 export function GoToImage(arg1:number):Promise<models.ImageInfo>;
 
+export function HandleFileOpen(arg1:string):Promise<void>;
+
 export function NextImage():Promise<models.ImageInfo>;
+
+export function OpenImageFile(arg1:string):Promise<void>;
 
 export function PreviousImage():Promise<models.ImageInfo>;
 
@@ -43,6 +51,8 @@ export function SelectDestinationFolder():Promise<string>;
 export function SelectWorkingDirectory():Promise<string>;
 
 export function SetActiveProfile(arg1:string):Promise<void>;
+
+export function SetInitialFile(arg1:string):Promise<void>;
 
 export function SetViewMode(arg1:string):Promise<models.ImageInfo>;
 

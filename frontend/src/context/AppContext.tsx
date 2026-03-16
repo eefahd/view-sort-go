@@ -22,6 +22,8 @@ interface AppState {
   toast: string | null;
   pendingLabels: string[];
   viewMode: "all" | "pending";
+  labelPanelOpen: boolean;
+  infoPanelOpen: boolean;
 }
 
 type Action =
@@ -41,7 +43,14 @@ type Action =
     }
   | { type: "TOGGLE_LABEL"; key: string }
   | { type: "CLEAR_LABELS" }
-  | { type: "SET_VIEW_MODE"; mode: "all" | "pending" };
+  | { type: "SET_VIEW_MODE"; mode: "all" | "pending" }
+  | { type: "TOGGLE_LABEL_PANEL" }
+  | { type: "TOGGLE_INFO_PANEL" };
+
+function loadBool(key: string, defaultVal: boolean): boolean {
+  const v = localStorage.getItem(key);
+  return v === null ? defaultVal : v === "true";
+}
 
 const initialState: AppState = {
   page: "viewer",
@@ -54,6 +63,8 @@ const initialState: AppState = {
   toast: null,
   pendingLabels: [],
   viewMode: "pending",
+  labelPanelOpen: loadBool("labelPanelOpen", true),
+  infoPanelOpen: loadBool("infoPanelOpen", false),
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -94,6 +105,16 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, pendingLabels: [] };
     case "SET_VIEW_MODE":
       return { ...state, viewMode: action.mode };
+    case "TOGGLE_LABEL_PANEL": {
+      const next = !state.labelPanelOpen;
+      localStorage.setItem("labelPanelOpen", String(next));
+      return { ...state, labelPanelOpen: next };
+    }
+    case "TOGGLE_INFO_PANEL": {
+      const next = !state.infoPanelOpen;
+      localStorage.setItem("infoPanelOpen", String(next));
+      return { ...state, infoPanelOpen: next };
+    }
     default:
       return state;
   }

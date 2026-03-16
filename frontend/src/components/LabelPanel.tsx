@@ -12,7 +12,6 @@ export function LabelPanel() {
   const { state, dispatch, showToast } = useAppContext();
   const [currentLabels, setCurrentLabels] = useState<string[]>([]);
 
-  // Fetch annotation labels for the current image
   useEffect(() => {
     if (!state.currentImage) {
       setCurrentLabels([]);
@@ -26,28 +25,19 @@ export function LabelPanel() {
   const activeProfile = state.profiles.find(
     (p) => p.id === state.activeProfileId
   );
-
   const isMultiLabel = activeProfile?.labelMode === "multi";
 
   const handleClick = async (key: string, action: string) => {
     if (!state.workingDir || !state.currentImage) return;
-
-    // Multi-label: toggle label shortcuts
     if (isMultiLabel && action === "label") {
       dispatch({ type: "TOGGLE_LABEL", key });
       return;
     }
-
     try {
       const img = await ExecuteShortcut(key);
       const counts = await GetImageCounts();
       const undoCount = await GetUndoCount();
-      dispatch({
-        type: "REFRESH_STATE",
-        image: img,
-        counts,
-        undoCount,
-      });
+      dispatch({ type: "REFRESH_STATE", image: img, counts, undoCount });
     } catch (err: any) {
       showToast(err?.toString() || "Action failed");
     }
@@ -60,54 +50,69 @@ export function LabelPanel() {
       const counts = await GetImageCounts();
       const undoCount = await GetUndoCount();
       dispatch({ type: "CLEAR_LABELS" });
-      dispatch({
-        type: "REFRESH_STATE",
-        image: img,
-        counts,
-        undoCount,
-      });
+      dispatch({ type: "REFRESH_STATE", image: img, counts, undoCount });
     } catch (err: any) {
       showToast(err?.toString() || "Label failed");
     }
   };
 
-  if (!activeProfile || activeProfile.shortcuts.length === 0) {
+  if (!state.labelPanelOpen) {
     return (
-      <div className="label-panel">
-        <h3>Shortcuts</h3>
-        <p className="muted">
-          No shortcuts configured. Go to Settings to add some.
-        </p>
+      <div className="panel-collapsed panel-collapsed-right">
+        <button
+          className="panel-toggle-btn"
+          onClick={() => dispatch({ type: "TOGGLE_LABEL_PANEL" })}
+          title="Show shortcuts"
+        >
+          ‹
+        </button>
+        <span className="panel-collapsed-label">Shortcuts</span>
       </div>
     );
   }
 
   return (
     <div className="label-panel">
-      <h3>Shortcuts</h3>
-      <div className="shortcut-list">
-        {activeProfile.shortcuts.map((s, i) => {
-          const isPending = isMultiLabel && state.pendingLabels.includes(s.key);
-          const destName = s.destination ? s.destination.split("/").pop() || "" : "";
-          const isApplied = s.action === "label" && currentLabels.includes(destName);
-          return (
-            <button
-              key={i}
-              className={`shortcut-btn${isPending ? " selected" : ""}${isApplied ? " applied" : ""}`}
-              onClick={() => handleClick(s.key, s.action)}
-              title={`${s.action} to ${s.destination || "(no destination)"}`}
-            >
-              <kbd>{s.key}</kbd>
-              <span>{s.label || s.key}</span>
-              <span className={`action-badge ${s.action}`}>{s.action}</span>
-            </button>
-          );
-        })}
-      </div>
-      {isMultiLabel && state.pendingLabels.length > 0 && (
-        <button className="confirm-btn" onClick={handleConfirm}>
-          Confirm ({state.pendingLabels.length}) ↵
+      <div className="panel-header">
+        <h3>Shortcuts</h3>
+        <button
+          className="panel-toggle-btn"
+          onClick={() => dispatch({ type: "TOGGLE_LABEL_PANEL" })}
+          title="Collapse"
+        >
+          ›
         </button>
+      </div>
+
+      {(!activeProfile || activeProfile.shortcuts.length === 0) ? (
+        <p className="muted">No shortcuts configured. Go to Settings to add some.</p>
+      ) : (
+        <>
+          <div className="shortcut-list">
+            {activeProfile.shortcuts.map((s, i) => {
+              const isPending = isMultiLabel && state.pendingLabels.includes(s.key);
+              const destName = s.destination ? s.destination.split("/").pop() || "" : "";
+              const isApplied = s.action === "label" && currentLabels.includes(destName);
+              return (
+                <button
+                  key={i}
+                  className={`shortcut-btn${isPending ? " selected" : ""}${isApplied ? " applied" : ""}`}
+                  onClick={() => handleClick(s.key, s.action)}
+                  title={`${s.action} to ${s.destination || "(no destination)"}`}
+                >
+                  <kbd>{s.key}</kbd>
+                  <span>{s.label || s.key}</span>
+                  <span className={`action-badge ${s.action}`}>{s.action}</span>
+                </button>
+              );
+            })}
+          </div>
+          {isMultiLabel && state.pendingLabels.length > 0 && (
+            <button className="confirm-btn" onClick={handleConfirm}>
+              Confirm ({state.pendingLabels.length}) ↵
+            </button>
+          )}
+        </>
       )}
     </div>
   );

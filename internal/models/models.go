@@ -51,3 +51,29 @@ type ImageCounts struct {
 	Remaining int `json:"remaining"`
 	Processed int `json:"processed"`
 }
+
+type ImageMetadata struct {
+	// File info
+	Filename   string `json:"filename"`
+	FileSize   int64  `json:"fileSize"`
+	ModifiedAt string `json:"modifiedAt"`
+	Format     string `json:"format"`
+
+	// Dimensions
+	Width  int `json:"width"`
+	Height int `json:"height"`
+
+	// EXIF
+	DateTaken    string  `json:"dateTaken"`
+	CameraMake   string  `json:"cameraMake"`
+	CameraModel  string  `json:"cameraModel"`
+	LensModel    string  `json:"lensModel"`
+	FocalLength  string  `json:"focalLength"`
+	Aperture     string  `json:"aperture"`
+	ShutterSpeed string  `json:"shutterSpeed"`
+	ISO          string  `json:"iso"`
+	Flash        string  `json:"flash"`
+	GPSLat       float64 `json:"gpsLat"`
+	GPSLon       float64 `json:"gpsLon"`
+	HasGPS       bool    `json:"hasGPS"`
+}

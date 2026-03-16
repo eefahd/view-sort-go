@@ -38,6 +38,14 @@ export function GetImageLabels(arg1) {
   return window['go']['main']['App']['GetImageLabels'](arg1);
 }
 
+export function GetImageMetadata() {
+  return window['go']['main']['App']['GetImageMetadata']();
+}
+
+export function GetInitialFile() {
+  return window['go']['main']['App']['GetInitialFile']();
+}
+
 export function GetLastWorkingDir() {
   return window['go']['main']['App']['GetLastWorkingDir']();
 }
@@ -66,8 +74,16 @@ export function GoToImage(arg1) {
   return window['go']['main']['App']['GoToImage'](arg1);
 }
 
+export function HandleFileOpen(arg1) {
+  return window['go']['main']['App']['HandleFileOpen'](arg1);
+}
+
 export function NextImage() {
   return window['go']['main']['App']['NextImage']();
+}
+
+export function OpenImageFile(arg1) {
+  return window['go']['main']['App']['OpenImageFile'](arg1);
 }
 
 export function PreviousImage() {
@@ -84,6 +100,10 @@ export function SelectWorkingDirectory() {
 
 export function SetActiveProfile(arg1) {
   return window['go']['main']['App']['SetActiveProfile'](arg1);
+}
+
+export function SetInitialFile(arg1) {
+  return window['go']['main']['App']['SetInitialFile'](arg1);
 }
 
 export function SetViewMode(arg1) {
