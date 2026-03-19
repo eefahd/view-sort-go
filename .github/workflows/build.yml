@@ -33,16 +33,15 @@ jobs:
       - name: Build
         run: wails build -platform darwin/universal
 
-      - name: Package .app into zip
+      - name: Package .app into DMG
         run: |
-          cd build/bin
-          zip -r view-sort-go-macos.zip view-sort-go.app
+          hdiutil create -volname "view-sort-go" -srcfolder build/bin/view-sort-go.app -ov -format UDZO build/bin/view-sort-go-macos.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: view-sort-go-macos
-          path: build/bin/view-sort-go-macos.zip
+          path: build/bin/view-sort-go-macos.dmg
 
   build-linux:
     name: Build Linux
@@ -75,11 +74,14 @@ jobs:
       - name: Build
         run: wails build -platform linux/amd64 -tags webkit2_41
 
+      - name: Rename binary
+        run: mv build/bin/view-sort-go build/bin/view-sort-go-linux-amd64
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: view-sort-go-linux
-          path: build/bin/view-sort-go
+          path: build/bin/view-sort-go-linux-amd64
 
   release:
     name: Create Release
@@ -103,5 +105,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            view-sort-go-macos.zip
-            view-sort-go
+            view-sort-go-macos.dmg
+            view-sort-go-linux-amd64
