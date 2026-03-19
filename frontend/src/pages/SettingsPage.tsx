@@ -14,12 +14,15 @@ import {
   UpdateProfile,
 } from "../../wailsjs/go/main/App";
 
+type Tab = "general" | "shortcuts" | "buttons" | "debug";
+
 export function SettingsPage() {
   const { state, dispatch, showToast } = useAppContext();
   const [newProfileName, setNewProfileName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [templateInput, setTemplateInput] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("general");
 
   const refreshProfiles = async () => {
     const profiles = await GetProfiles();
@@ -96,38 +99,33 @@ export function SettingsPage() {
     (p) => p.id === state.activeProfileId
   );
 
-  // Sync local template input when the active profile changes
   useEffect(() => {
     setTemplateInput(activeProfile?.labelSubfolderTemplate || "");
   }, [activeProfile?.id, activeProfile?.labelSubfolderTemplate]);
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "general", label: "General" },
+    { id: "shortcuts", label: "Labels" },
+    { id: "buttons", label: "Custom Buttons" },
+    { id: "debug", label: "Debug" },
+  ];
 
   return (
     <div className="settings-page">
-      <div className="settings-header">
-        <button onClick={handleBack}>Back</button>
-        <h2>Settings</h2>
-      </div>
-
-      <section className="settings-section">
-        <h3>Profiles</h3>
-        <div className="profile-create">
-          <input
-            type="text"
-            value={newProfileName}
-            onChange={(e) => setNewProfileName(e.target.value)}
-            placeholder="New profile name..."
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreateProfile();
-            }}
-          />
-          <button onClick={handleCreateProfile}>Create</button>
+      {/* Sidebar */}
+      <aside className="settings-sidebar">
+        <div className="settings-sidebar-header">
+          <button className="settings-back-btn" onClick={handleBack} title="Back">
+            ←
+          </button>
+          <span className="settings-sidebar-title">Profiles</span>
         </div>
-        <div className="profile-list">
+
+        <div className="settings-profile-list">
           {state.profiles.map((p) => (
             <div
               key={p.id}
-              className={`profile-item ${p.id === state.activeProfileId ? "active" : ""}`}
+              className={`settings-profile-item${p.id === state.activeProfileId ? " active" : ""}`}
               onClick={() => handleSelectProfile(p.id)}
             >
               {editingId === p.id ? (
@@ -145,237 +143,238 @@ export function SettingsPage() {
                   onBlur={() => handleFinishRename(p)}
                 />
               ) : (
-                <span>{p.name}</span>
+                <span className="settings-profile-name">{p.name}</span>
               )}
-              <div className="profile-actions">
+              <div className="settings-profile-actions">
                 <button
-                  className="edit-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleStartRename(p.id, p.name);
-                  }}
-                  title="Rename profile"
+                  title="Rename"
+                  onClick={(e) => { e.stopPropagation(); handleStartRename(p.id, p.name); }}
                 >
-                  Rename
+                  ✎
                 </button>
                 <button
-                  className="edit-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDuplicateProfile(p.id, p.name);
-                  }}
-                  title="Duplicate profile"
+                  title="Duplicate"
+                  onClick={(e) => { e.stopPropagation(); handleDuplicateProfile(p.id, p.name); }}
                 >
-                  Duplicate
+                  ⧉
                 </button>
                 <button
-                  className="remove-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteProfile(p.id, p.name);
-                  }}
+                  title="Delete"
+                  className="danger"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteProfile(p.id, p.name); }}
                 >
-                  Delete
+                  ✕
                 </button>
               </div>
             </div>
           ))}
           {state.profiles.length === 0 && (
-            <p className="muted">No profiles yet. Create one above.</p>
+            <p className="settings-empty">No profiles yet.</p>
           )}
         </div>
-      </section>
 
-      {activeProfile && (
-        <section className="settings-section">
-          <h3>Shortcuts for "{activeProfile.name}"</h3>
+        <div className="settings-create-profile">
+          <input
+            type="text"
+            value={newProfileName}
+            onChange={(e) => setNewProfileName(e.target.value)}
+            placeholder="New profile name…"
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateProfile(); }}
+          />
+          <button onClick={handleCreateProfile} disabled={!newProfileName.trim()}>
+            +
+          </button>
+        </div>
+      </aside>
 
-          <div className="profile-option-row">
-            <span>Action type:</span>
-            <select
-              value={activeProfile.actionType || "custom"}
-              onChange={async (e) => {
-                const updated = new models.Profile({
-                  ...activeProfile,
-                  actionType: e.target.value as ProfileActionType,
-                });
-                await UpdateProfile(updated);
-                await refreshProfiles();
-              }}
-            >
-              <option value="copy">Copy</option>
-              <option value="move">Move</option>
-              <option value="label">Label</option>
-              <option value="custom">Custom (per shortcut)</option>
-            </select>
-          </div>
+      {/* Main panel */}
+      <div className="settings-main">
+        {activeProfile ? (
+          <>
+            <div className="settings-profile-heading">
+              <span>{activeProfile.name}</span>
+            </div>
 
-          {activeProfile.actionType === "label" && (
-            <>
-              <div className="profile-option-row">
-                <span>Label mode:</span>
-                <label>
-                  <input
-                    type="radio"
-                    name="labelMode"
-                    value="single"
-                    checked={activeProfile.labelMode !== "multi"}
-                    onChange={async () => {
-                      const updated = new models.Profile({
-                        ...activeProfile,
-                        labelMode: "single",
-                      });
-                      await UpdateProfile(updated);
-                      await refreshProfiles();
-                    }}
-                  />
-                  Single
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="labelMode"
-                    value="multi"
-                    checked={activeProfile.labelMode === "multi"}
-                    onChange={async () => {
-                      const updated = new models.Profile({
-                        ...activeProfile,
-                        labelMode: "multi",
-                      });
-                      await UpdateProfile(updated);
-                      await refreshProfiles();
-                    }}
-                  />
-                  Multi
-                </label>
-              </div>
+            {/* Tab bar */}
+            <div className="settings-tabs">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  className={`settings-tab${activeTab === t.id ? " active" : ""}`}
+                  onClick={() => setActiveTab(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-              <div className="profile-option-row">
-                <span>Output directory:</span>
-                <FolderPicker
-                  value={activeProfile.labelOutputDir || ""}
-                  onChange={async (path) => {
-                    const updated = new models.Profile({
-                      ...activeProfile,
-                      labelOutputDir: path,
-                    });
-                    await UpdateProfile(updated);
-                    await refreshProfiles();
-                  }}
-                  onClear={async () => {
-                    const updated = new models.Profile({
-                      ...activeProfile,
-                      labelOutputDir: "",
-                    });
-                    await UpdateProfile(updated);
-                    await refreshProfiles();
-                  }}
-                />
-              </div>
+            {/* Tab content */}
+            <div className="settings-tab-content">
 
-              <div className="profile-option-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                <span>Sub-folder template:</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
-                  <input
-                    type="text"
-                    style={{ flex: 1, fontSize: 13 }}
-                    value={templateInput}
-                    placeholder="e.g. {parent1}  or  {parent2}/{parent1}"
-                    onChange={(e) => setTemplateInput(e.target.value)}
-                    onBlur={async () => {
-                      const updated = new models.Profile({
-                        ...activeProfile,
-                        labelSubfolderTemplate: templateInput,
-                      });
-                      await UpdateProfile(updated);
-                      await refreshProfiles();
-                    }}
-                  />
+              {activeTab === "general" && (
+                <div className="settings-form">
+                  <div className="settings-field">
+                    <label className="settings-label">Action type</label>
+                    <select
+                      value={activeProfile.actionType || "custom"}
+                      onChange={async (e) => {
+                        const updated = new models.Profile({
+                          ...activeProfile,
+                          actionType: e.target.value as ProfileActionType,
+                        });
+                        await UpdateProfile(updated);
+                        await refreshProfiles();
+                      }}
+                    >
+                      <option value="copy">Copy</option>
+                      <option value="move">Move</option>
+                      <option value="label">Label</option>
+                      <option value="custom">Custom (per shortcut)</option>
+                    </select>
+                  </div>
+
+                  {activeProfile.actionType === "label" && (
+                    <>
+                      <div className="settings-divider" />
+
+                      <div className="settings-field">
+                        <label className="settings-label">Label mode</label>
+                        <div className="settings-radio-group">
+                          <label>
+                            <input
+                              type="radio"
+                              name="labelMode"
+                              value="single"
+                              checked={activeProfile.labelMode !== "multi"}
+                              onChange={async () => {
+                                const updated = new models.Profile({ ...activeProfile, labelMode: "single" });
+                                await UpdateProfile(updated);
+                                await refreshProfiles();
+                              }}
+                            />
+                            Single
+                          </label>
+                          <label>
+                            <input
+                              type="radio"
+                              name="labelMode"
+                              value="multi"
+                              checked={activeProfile.labelMode === "multi"}
+                              onChange={async () => {
+                                const updated = new models.Profile({ ...activeProfile, labelMode: "multi" });
+                                await UpdateProfile(updated);
+                                await refreshProfiles();
+                              }}
+                            />
+                            Multi
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="settings-field">
+                        <label className="settings-label">Output directory</label>
+                        <FolderPicker
+                          value={activeProfile.labelOutputDir || ""}
+                          onChange={async (path) => {
+                            const updated = new models.Profile({ ...activeProfile, labelOutputDir: path });
+                            await UpdateProfile(updated);
+                            await refreshProfiles();
+                          }}
+                          onClear={async () => {
+                            const updated = new models.Profile({ ...activeProfile, labelOutputDir: "" });
+                            await UpdateProfile(updated);
+                            await refreshProfiles();
+                          }}
+                        />
+                      </div>
+
+                      <div className="settings-field settings-field--col">
+                        <label className="settings-label">Sub-folder template</label>
+                        <input
+                          type="text"
+                          value={templateInput}
+                          placeholder="e.g. {parent1}  or  {parent2}/{parent1}"
+                          onChange={(e) => setTemplateInput(e.target.value)}
+                          onBlur={async () => {
+                            const updated = new models.Profile({ ...activeProfile, labelSubfolderTemplate: templateInput });
+                            await UpdateProfile(updated);
+                            await refreshProfiles();
+                          }}
+                        />
+                        <span className="settings-hint">
+                          {"{parent1}"} = immediate parent folder, {"{parent2}"} = grandparent. Leave empty for flat output.
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <span className="muted" style={{ fontSize: 11 }}>
-                  {"Use {parent1} = immediate parent, {parent2} = grandparent, … Leave empty for flat output."}
-                </span>
-              </div>
-            </>
-          )}
+              )}
 
-          <ShortcutTable
-            profile={activeProfile}
-            onProfileUpdated={refreshProfiles}
-          />
-        </section>
-      )}
+              {activeTab === "shortcuts" && (
+                <ShortcutTable profile={activeProfile} onProfileUpdated={refreshProfiles} />
+              )}
 
-      {activeProfile && (
-        <section className="settings-section">
-          <h3>
-            Function Buttons for "{activeProfile.name}"
-          </h3>
-          <p className="muted" style={{ marginBottom: 8, fontSize: 12 }}>
-            Use <code>$image_path</code> in commands as a placeholder for the current image path.
-          </p>
-          <FunctionButtonTable
-            profile={activeProfile}
-            onProfileUpdated={refreshProfiles}
-          />
-        </section>
-      )}
+              {activeTab === "buttons" && (
+                <div>
+                  <p className="settings-hint" style={{ marginBottom: 12 }}>
+                    Use <code>$image_path</code> as a placeholder for the current image path.
+                  </p>
+                  <FunctionButtonTable profile={activeProfile} onProfileUpdated={refreshProfiles} />
+                </div>
+              )}
 
-      {activeProfile && (
-        <section className="settings-section">
-          <h3>Extra Image (Debug) for "{activeProfile.name}"</h3>
-          <p className="muted" style={{ marginBottom: 8, fontSize: 12 }}>
-            Show a linked image side-by-side for debugging. The linked image is resolved by
-            walking up the current image's path by the specified depth, then looking under
-            the extra image root for a file with the same stem.
-          </p>
-          <div className="profile-option-row">
-            <span>Extra image root:</span>
-            <FolderPicker
-              value={activeProfile.extraImageRoot || ""}
-              onChange={async (path) => {
-                const updated = new models.Profile({
-                  ...activeProfile,
-                  extraImageRoot: path,
-                });
-                await UpdateProfile(updated);
-                await refreshProfiles();
-              }}
-              onClear={async () => {
-                const updated = new models.Profile({
-                  ...activeProfile,
-                  extraImageRoot: "",
-                });
-                await UpdateProfile(updated);
-                await refreshProfiles();
-              }}
-            />
+              {activeTab === "debug" && (
+                <div className="settings-form">
+                  <p className="settings-hint" style={{ marginBottom: 16 }}>
+                    Show a linked image side-by-side for debugging. The app resolves the extra image by walking up the current image's path by the specified depth, then searching under the extra image root for a file with the same stem.
+                  </p>
+
+                  <div className="settings-field">
+                    <label className="settings-label">Extra image root</label>
+                    <FolderPicker
+                      value={activeProfile.extraImageRoot || ""}
+                      onChange={async (path) => {
+                        const updated = new models.Profile({ ...activeProfile, extraImageRoot: path });
+                        await UpdateProfile(updated);
+                        await refreshProfiles();
+                      }}
+                      onClear={async () => {
+                        const updated = new models.Profile({ ...activeProfile, extraImageRoot: "" });
+                        await UpdateProfile(updated);
+                        await refreshProfiles();
+                      }}
+                    />
+                  </div>
+
+                  <div className="settings-field">
+                    <label className="settings-label">Parent depth</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      style={{ width: 70 }}
+                      value={activeProfile.extraImageLinkDepth || 1}
+                      onChange={async (e) => {
+                        const depth = parseInt(e.target.value, 10);
+                        if (isNaN(depth) || depth < 1) return;
+                        const updated = new models.Profile({ ...activeProfile, extraImageLinkDepth: depth });
+                        await UpdateProfile(updated);
+                        await refreshProfiles();
+                      }}
+                    />
+                    <span className="settings-hint">levels up from image file</span>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </>
+        ) : (
+          <div className="settings-no-profile">
+            <p>Select or create a profile to configure it.</p>
           </div>
-          <div className="profile-option-row">
-            <span>Parent depth:</span>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              style={{ width: 60 }}
-              value={activeProfile.extraImageLinkDepth || 1}
-              onChange={async (e) => {
-                const depth = parseInt(e.target.value, 10);
-                if (isNaN(depth) || depth < 1) return;
-                const updated = new models.Profile({
-                  ...activeProfile,
-                  extraImageLinkDepth: depth,
-                });
-                await UpdateProfile(updated);
-                await refreshProfiles();
-              }}
-            />
-            <span className="muted" style={{ fontSize: 11 }}>
-              levels up from image to find the matching folder under extra image root
-            </span>
-          </div>
-        </section>
-      )}
+        )}
+      </div>
     </div>
   );
 }
