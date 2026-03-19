@@ -6,15 +6,21 @@ export function CreateProfile(arg1:string):Promise<models.Profile>;
 
 export function DeleteProfile(arg1:string):Promise<void>;
 
+export function DuplicateProfile(arg1:string):Promise<models.Profile>;
+
 export function ExecuteFunctionButton(arg1:number):Promise<void>;
 
 export function ExecuteMultiLabel(arg1:Array<string>):Promise<models.ImageInfo>;
 
 export function ExecuteShortcut(arg1:string):Promise<models.ImageInfo>;
 
+export function ExecuteShortcutByIndex(arg1:number):Promise<models.ImageInfo>;
+
 export function GetActiveProfile():Promise<models.Profile>;
 
 export function GetCurrentImageInfo():Promise<models.ImageInfo>;
+
+export function GetExtraImagePath():Promise<string>;
 
 export function GetImageCounts():Promise<models.ImageCounts>;
 
@@ -45,6 +51,8 @@ export function NextImage():Promise<models.ImageInfo>;
 export function OpenImageFile(arg1:string):Promise<void>;
 
 export function PreviousImage():Promise<models.ImageInfo>;
+
+export function ResetAnnotations():Promise<void>;
 
 export function SelectDestinationFolder():Promise<string>;
 

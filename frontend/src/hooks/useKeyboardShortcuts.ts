@@ -3,6 +3,7 @@ import { useAppContext } from "../context/AppContext";
 import {
   ExecuteShortcut,
   ExecuteMultiLabel,
+  ExecuteFunctionButton,
   Undo,
   GetImageCounts,
   GetUndoCount,
@@ -91,12 +92,30 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Single character = shortcut execution
+      // Single character = shortcut or function button execution
       if (e.key.length === 1 && state.workingDir) {
+        // Check function button keys first
+        const fnButtons = activeProfile?.functionButtons || [];
+        const fnIndex = fnButtons.findIndex((fb) => fb.key === e.key);
+        if (fnIndex !== -1) {
+          if (busyRef.current) return;
+          busyRef.current = true;
+          try {
+            await ExecuteFunctionButton(fnIndex);
+          } catch (err: any) {
+            showToast(err?.toString() || "Function button failed");
+          } finally {
+            busyRef.current = false;
+          }
+          return;
+        }
+
         // Multi-label mode: toggle label shortcuts, execute non-label shortcuts immediately
         if (isMultiLabel) {
-          const shortcut = activeProfile?.shortcuts.find((s) => s.key === e.key);
-          if (shortcut && shortcut.action === "label") {
+          const effectiveAction = activeProfile?.actionType && activeProfile.actionType !== "custom"
+            ? activeProfile.actionType
+            : activeProfile?.shortcuts.find((s) => s.key === e.key)?.action;
+          if (effectiveAction === "label") {
             dispatch({ type: "TOGGLE_LABEL", key: e.key });
             return;
           }

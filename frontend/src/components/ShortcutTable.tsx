@@ -13,6 +13,11 @@ interface ShortcutTableProps {
   onProfileUpdated: () => void;
 }
 
+// Whether the profile-level action type overrides per-shortcut actions
+function isProfileActionFixed(profile: Profile): boolean {
+  return !!profile.actionType && profile.actionType !== "custom";
+}
+
 export function ShortcutTable({
   profile,
   onProfileUpdated,
@@ -31,10 +36,7 @@ export function ShortcutTable({
 
   const saveShortcuts = async (shortcuts: Shortcut[]) => {
     const updated = new models.Profile({
-      id: profile.id,
-      name: profile.name,
-      labelMode: profile.labelMode,
-      functionButtons: profile.functionButtons,
+      ...profile,
       shortcuts,
     });
     try {
@@ -121,6 +123,9 @@ export function ShortcutTable({
     }
   };
 
+  const fixedAction = isProfileActionFixed(profile);
+  const isLabelMode = profile.actionType === "label";
+
   return (
     <div className="shortcut-table">
       <table>
@@ -129,8 +134,8 @@ export function ShortcutTable({
             <th></th>
             <th>Label</th>
             <th>Key</th>
-            <th>Action</th>
-            <th>Destination</th>
+            {!fixedAction && <th>Action</th>}
+            {!isLabelMode && <th>Destination</th>}
             <th></th>
           </tr>
         </thead>
@@ -174,26 +179,30 @@ export function ShortcutTable({
                   )}
                 </div>
               </td>
-              <td>
-                <select
-                  value={s.action}
-                  onChange={(e) =>
-                    updateAndSave(i, {
-                      action: e.target.value as ActionType,
-                    })
-                  }
-                >
-                  <option value="copy">Copy</option>
-                  <option value="move">Move</option>
-                  <option value="label">Label</option>
-                </select>
-              </td>
-              <td>
-                <FolderPicker
-                  value={s.destination}
-                  onChange={(path) => updateAndSave(i, { destination: path })}
-                />
-              </td>
+              {!fixedAction && (
+                <td>
+                  <select
+                    value={s.action}
+                    onChange={(e) =>
+                      updateAndSave(i, {
+                        action: e.target.value as ActionType,
+                      })
+                    }
+                  >
+                    <option value="copy">Copy</option>
+                    <option value="move">Move</option>
+                    <option value="label">Label</option>
+                  </select>
+                </td>
+              )}
+              {!isLabelMode && (
+                <td>
+                  <FolderPicker
+                    value={s.destination}
+                    onChange={(path) => updateAndSave(i, { destination: path })}
+                  />
+                </td>
+              )}
               <td>
                 <button
                   className="remove-btn"

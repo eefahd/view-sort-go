@@ -1,19 +1,25 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
+import { GetExtraImagePath } from "../../wailsjs/go/main/App";
 
 export function ImageViewer() {
   const { state } = useAppContext();
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [extraImagePath, setExtraImagePath] = useState<string>("");
   const panStart = useRef({ x: 0, y: 0 });
   const translateStart = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Reset zoom/pan when image changes
+  // Reset zoom/pan when image changes, and fetch extra image path
   useEffect(() => {
     setScale(1);
     setTranslate({ x: 0, y: 0 });
+    setExtraImagePath("");
+    if (state.currentImage) {
+      GetExtraImagePath().then((p) => setExtraImagePath(p || "")).catch(() => {});
+    }
   }, [state.currentImage?.filename]);
 
   const handleWheel = useCallback(
@@ -75,10 +81,18 @@ export function ImageViewer() {
   }
 
   const imageUrl = `/images/${encodeURIComponent(state.currentImage.filename)}`;
+  const extraImageUrl = extraImagePath
+    ? `/extra-image?path=${encodeURIComponent(extraImagePath)}`
+    : "";
+
+  const imgStyle = {
+    transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+    cursor: isPanning ? "grabbing" : "default",
+  };
 
   return (
     <div
-      className="image-viewer"
+      className={`image-viewer${extraImageUrl ? " image-viewer--split" : ""}`}
       ref={containerRef}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
@@ -86,21 +100,43 @@ export function ImageViewer() {
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      <img
-        src={imageUrl}
-        alt={state.currentImage.filename}
-        draggable={false}
-        style={{
-          transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-          cursor: isPanning ? "grabbing" : "default",
-        }}
-      />
-      <div className="zoom-controls">
-        <button onClick={zoomOut} title="Zoom out">-</button>
-        <span>{Math.round(scale * 100)}%</span>
-        <button onClick={zoomIn} title="Zoom in">+</button>
-        <button onClick={fitView} title="Fit to view">Fit</button>
+      <div className="image-pane">
+        <img
+          src={imageUrl}
+          alt={state.currentImage.filename}
+          draggable={false}
+          style={imgStyle}
+        />
+        {!extraImageUrl && (
+          <div className="zoom-controls">
+            <button onClick={zoomOut} title="Zoom out">-</button>
+            <span>{Math.round(scale * 100)}%</span>
+            <button onClick={zoomIn} title="Zoom in">+</button>
+            <button onClick={fitView} title="Fit to view">Fit</button>
+          </div>
+        )}
       </div>
+
+      {extraImageUrl && (
+        <div className="image-pane image-pane--extra">
+          <img
+            src={extraImageUrl}
+            alt="extra"
+            draggable={false}
+            style={imgStyle}
+          />
+          <div className="image-pane-label">Extra</div>
+        </div>
+      )}
+
+      {extraImageUrl && (
+        <div className="zoom-controls">
+          <button onClick={zoomOut} title="Zoom out">-</button>
+          <span>{Math.round(scale * 100)}%</span>
+          <button onClick={zoomIn} title="Zoom in">+</button>
+          <button onClick={fitView} title="Fit to view">Fit</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,6 +10,10 @@ export function DeleteProfile(arg1) {
   return window['go']['main']['App']['DeleteProfile'](arg1);
 }
 
+export function DuplicateProfile(arg1) {
+  return window['go']['main']['App']['DuplicateProfile'](arg1);
+}
+
 export function ExecuteFunctionButton(arg1) {
   return window['go']['main']['App']['ExecuteFunctionButton'](arg1);
 }
@@ -22,12 +26,20 @@ export function ExecuteShortcut(arg1) {
   return window['go']['main']['App']['ExecuteShortcut'](arg1);
 }
 
+export function ExecuteShortcutByIndex(arg1) {
+  return window['go']['main']['App']['ExecuteShortcutByIndex'](arg1);
+}
+
 export function GetActiveProfile() {
   return window['go']['main']['App']['GetActiveProfile']();
 }
 
 export function GetCurrentImageInfo() {
   return window['go']['main']['App']['GetCurrentImageInfo']();
+}
+
+export function GetExtraImagePath() {
+  return window['go']['main']['App']['GetExtraImagePath']();
 }
 
 export function GetImageCounts() {
@@ -88,6 +100,10 @@ export function OpenImageFile(arg1) {
 
 export function PreviousImage() {
   return window['go']['main']['App']['PreviousImage']();
+}
+
+export function ResetAnnotations() {
+  return window['go']['main']['App']['ResetAnnotations']();
 }
 
 export function SelectDestinationFolder() {

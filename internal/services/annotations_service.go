@@ -78,6 +78,20 @@ func (s *AnnotationsService) GetLabels(filename string) []string {
 	return s.annotations[filename]
 }
 
+// Reset clears all in-memory annotations and deletes the persisted file.
+func (s *AnnotationsService) Reset() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.annotations = make(map[string][]string)
+	path := filepath.Join(s.workingDir, annotationsFile)
+	err := os.Remove(path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 func (s *AnnotationsService) GetAnnotatedSet() map[string]bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

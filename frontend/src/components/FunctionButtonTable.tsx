@@ -16,6 +16,7 @@ export function FunctionButtonTable({
   onProfileUpdated,
 }: FunctionButtonTableProps) {
   const { showToast } = useAppContext();
+  const [capturingIndex, setCapturingIndex] = useState<number | null>(null);
 
   const [localButtons, setLocalButtons] = useState<FunctionButton[]>(
     profile.functionButtons || []
@@ -51,7 +52,7 @@ export function FunctionButtonTable({
   const addButton = () => {
     const updated = [
       ...localButtons,
-      new models.FunctionButton({ label: "", command: "" }),
+      new models.FunctionButton({ label: "", command: "", key: "" }),
     ];
     setLocalButtons(updated);
     saveButtons(updated);
@@ -63,6 +64,23 @@ export function FunctionButtonTable({
     saveButtons(updated);
   };
 
+  const handleKeyCapture = (index: number, e: React.KeyboardEvent) => {
+    if (capturingIndex !== index) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      setCapturingIndex(null);
+      return;
+    }
+    if (e.key.length === 1) {
+      const updated = [...localButtons];
+      updated[index] = { ...updated[index], key: e.key };
+      setLocalButtons(updated);
+      saveButtons(updated);
+      setCapturingIndex(null);
+    }
+  };
+
   return (
     <div className="shortcut-table">
       <table>
@@ -70,6 +88,7 @@ export function FunctionButtonTable({
           <tr>
             <th>Label</th>
             <th>Command</th>
+            <th>Key</th>
             <th></th>
           </tr>
         </thead>
@@ -93,6 +112,23 @@ export function FunctionButtonTable({
                   onChange={(e) => updateLocal(i, { command: e.target.value })}
                   onBlur={handleBlur}
                 />
+              </td>
+              <td>
+                <div
+                  className={`key-capture ${capturingIndex === i ? "active" : ""}`}
+                  tabIndex={0}
+                  onClick={() => setCapturingIndex(i)}
+                  onKeyDown={(e) => handleKeyCapture(i, e)}
+                  onBlur={() => {
+                    if (capturingIndex === i) setCapturingIndex(null);
+                  }}
+                >
+                  {capturingIndex === i ? (
+                    <span className="capturing">Press a key...</span>
+                  ) : (
+                    <kbd>{fb.key || "..."}</kbd>
+                  )}
+                </div>
               </td>
               <td>
                 <button

@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -220,6 +222,93 @@ func (a *App) GetImageLabels(filename string) []string {
 	return a.annotationsService.GetLabels(filename)
 }
 
+func (a *App) ResetAnnotations() error {
+	workingDir := a.imageService.GetWorkingDir()
+	if workingDir == "" {
+		return fmt.Errorf("no folder open")
+	}
+	annotationsPath := filepath.Join(workingDir, ".annotations.json")
+	err := os.Remove(annotationsPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove annotations file: %w", err)
+	}
+	return nil
+}
+
+// GetExtraImagePath returns the absolute path of the linked "extra" image for
+// the current image, based on the profile's ExtraImageRoot and ExtraImageLinkDepth.
+// Returns "" if no matching file is found or if the feature is not configured.
+func (a *App) GetExtraImagePath() string {
+	profile := a.profileService.GetActiveProfile()
+	if profile == nil || profile.ExtraImageRoot == "" {
+		return ""
+	}
+
+	srcPath := a.imageService.GetCurrentFilePath()
+	if srcPath == "" {
+		return ""
+	}
+
+	// Build subdirectory from the current image's parent hierarchy
+	extraDir := profile.ExtraImageRoot
+	if profile.ExtraImageLinkDepth > 0 {
+		dir := filepath.Dir(srcPath)
+		parts := make([]string, profile.ExtraImageLinkDepth)
+		for i := profile.ExtraImageLinkDepth - 1; i >= 0; i-- {
+			parts[i] = filepath.Base(dir)
+			dir = filepath.Dir(dir)
+		}
+		extraDir = filepath.Join(append([]string{profile.ExtraImageRoot}, parts...)...)
+	}
+
+	// Find any image file with the same stem (extension may differ)
+	stem := strings.TrimSuffix(filepath.Base(srcPath), filepath.Ext(srcPath))
+	entries, err := os.ReadDir(extraDir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		eStem := strings.TrimSuffix(name, filepath.Ext(name))
+		if strings.EqualFold(eStem, stem) && isImageFile(name) {
+			return filepath.Join(extraDir, name)
+		}
+	}
+	return ""
+}
+
+// labelDestDir builds the destination directory for a label annotation.
+// template may contain {parent1}, {parent2}, … placeholders which are resolved
+// against the parent folders of srcPath ({parent1} = immediate parent, {parent2} = grandparent, …).
+// Example: template="{parent2}/{parent1}", srcPath="/data/eth/normal/img.jpg"
+//   → baseDir/eth/normal
+func labelDestDir(baseDir, srcPath, template string) string {
+	if template == "" {
+		return baseDir
+	}
+	resolved := parentTemplateRe.ReplaceAllStringFunc(template, func(match string) string {
+		sub := parentTemplateRe.FindStringSubmatch(match)
+		if len(sub) < 2 {
+			return match
+		}
+		n, err := strconv.Atoi(sub[1])
+		if err != nil || n <= 0 {
+			return match
+		}
+		dir := filepath.Dir(srcPath)
+		for i := 1; i < n; i++ {
+			dir = filepath.Dir(dir)
+		}
+		return filepath.Base(dir)
+	})
+	return filepath.Join(baseDir, filepath.FromSlash(resolved))
+}
+
+var parentTemplateRe = regexp.MustCompile(`\{parent(\d+)\}`)
+
 // --- Shortcut Execution ---
 
 func (a *App) ExecuteShortcut(key string) (*models.ImageInfo, error) {
@@ -239,16 +328,45 @@ func (a *App) ExecuteShortcut(key string) (*models.ImageInfo, error) {
 		return nil, fmt.Errorf("no shortcut bound to key: %s", key)
 	}
 
-	if shortcut.Destination == "" {
-		return nil, fmt.Errorf("no destination set for shortcut: %s", shortcut.Label)
-	}
-
 	srcPath := a.imageService.GetCurrentFilePath()
 	if srcPath == "" {
 		return nil, fmt.Errorf("no image selected")
 	}
 
-	action, err := a.actionRegistry.Get(shortcut.Action)
+	filename := filepath.Base(srcPath)
+
+	// Determine effective action type (profile-level overrides per-shortcut when not custom)
+	effectiveAction := shortcut.Action
+	if profile.ActionType != "" && profile.ActionType != models.ProfileActionCustom {
+		effectiveAction = models.ActionType(profile.ActionType)
+	}
+
+	// Profile-level label mode with a centralized output directory
+	if effectiveAction == models.ActionLabel && profile.LabelOutputDir != "" {
+		labelName := shortcut.Label
+		destDir := labelDestDir(profile.LabelOutputDir, srcPath, profile.LabelSubfolderTemplate)
+
+		destPath, err := services.WriteSingleLabel(srcPath, labelName, destDir)
+		if err != nil {
+			return nil, fmt.Errorf("label failed: %w", err)
+		}
+
+		a.undoService.Push(models.UndoEntry{
+			SourcePath: srcPath,
+			DestPath:   destPath,
+			Action:     models.ActionLabel,
+		})
+		_ = a.annotationsService.Annotate(filename, []string{labelName})
+		a.imageService.MarkAnnotated(filename)
+		return a.imageService.GetCurrentImage(), nil
+	}
+
+	// Standard execution: use shortcut destination
+	if shortcut.Destination == "" {
+		return nil, fmt.Errorf("no destination set for shortcut: %s", shortcut.Label)
+	}
+
+	action, err := a.actionRegistry.Get(effectiveAction)
 	if err != nil {
 		return nil, err
 	}
@@ -261,14 +379,12 @@ func (a *App) ExecuteShortcut(key string) (*models.ImageInfo, error) {
 	a.undoService.Push(models.UndoEntry{
 		SourcePath: srcPath,
 		DestPath:   destPath,
-		Action:     shortcut.Action,
+		Action:     effectiveAction,
 	})
 
-	filename := filepath.Base(srcPath)
-
-	if shortcut.Action == models.ActionMove {
+	if effectiveAction == models.ActionMove {
 		a.imageService.RemoveCurrent()
-	} else if shortcut.Action == models.ActionLabel {
+	} else if effectiveAction == models.ActionLabel {
 		label := filepath.Base(shortcut.Destination)
 		_ = a.annotationsService.Annotate(filename, []string{label})
 		a.imageService.MarkAnnotated(filename)
@@ -288,12 +404,18 @@ func (a *App) ExecuteMultiLabel(keys []string) (*models.ImageInfo, error) {
 		return nil, fmt.Errorf("no image selected")
 	}
 
-	// Collect labels from shortcut destinations
+	// Collect labels: from shortcut Label names when profile has a centralized output dir,
+	// otherwise from the basename of shortcut destinations.
 	var labels []string
+	useProfileOutputDir := profile.LabelOutputDir != ""
 	for _, key := range keys {
 		for _, s := range profile.Shortcuts {
 			if s.Key == key {
-				if s.Destination != "" {
+				if useProfileOutputDir {
+					if s.Label != "" {
+						labels = append(labels, s.Label)
+					}
+				} else if s.Destination != "" {
 					labels = append(labels, filepath.Base(s.Destination))
 				}
 				break
@@ -305,9 +427,13 @@ func (a *App) ExecuteMultiLabel(keys []string) (*models.ImageInfo, error) {
 		return nil, fmt.Errorf("no labels selected")
 	}
 
-	// Write JSON to working directory
-	workingDir := a.imageService.GetWorkingDir()
-	destPath, err := services.WriteMultiLabel(srcPath, labels, workingDir)
+	// Determine output directory
+	destDir := a.imageService.GetWorkingDir()
+	if useProfileOutputDir {
+		destDir = labelDestDir(profile.LabelOutputDir, srcPath, profile.LabelSubfolderTemplate)
+	}
+
+	destPath, err := services.WriteMultiLabel(srcPath, labels, destDir)
 	if err != nil {
 		return nil, fmt.Errorf("label failed: %w", err)
 	}
@@ -374,6 +500,78 @@ func (a *App) GetActiveProfile() *models.Profile {
 
 func (a *App) SetActiveProfile(id string) error {
 	return a.profileService.SetActiveProfile(id)
+}
+
+func (a *App) DuplicateProfile(id string) (models.Profile, error) {
+	return a.profileService.DuplicateProfile(id)
+}
+
+// ExecuteShortcutByIndex executes the shortcut at the given index in the active profile.
+// Used for shortcuts without a key binding (e.g. quick-created labels).
+func (a *App) ExecuteShortcutByIndex(index int) (*models.ImageInfo, error) {
+	profile := a.profileService.GetActiveProfile()
+	if profile == nil {
+		return nil, fmt.Errorf("no active profile")
+	}
+	if index < 0 || index >= len(profile.Shortcuts) {
+		return nil, fmt.Errorf("invalid shortcut index")
+	}
+	shortcut := profile.Shortcuts[index]
+
+	srcPath := a.imageService.GetCurrentFilePath()
+	if srcPath == "" {
+		return nil, fmt.Errorf("no image selected")
+	}
+
+	filename := filepath.Base(srcPath)
+
+	effectiveAction := shortcut.Action
+	if profile.ActionType != "" && profile.ActionType != models.ProfileActionCustom {
+		effectiveAction = models.ActionType(profile.ActionType)
+	}
+
+	if effectiveAction == models.ActionLabel && profile.LabelOutputDir != "" {
+		labelName := shortcut.Label
+		destDir := labelDestDir(profile.LabelOutputDir, srcPath, profile.LabelSubfolderTemplate)
+		destPath, err := services.WriteSingleLabel(srcPath, labelName, destDir)
+		if err != nil {
+			return nil, fmt.Errorf("label failed: %w", err)
+		}
+		a.undoService.Push(models.UndoEntry{
+			SourcePath: srcPath,
+			DestPath:   destPath,
+			Action:     models.ActionLabel,
+		})
+		_ = a.annotationsService.Annotate(filename, []string{labelName})
+		a.imageService.MarkAnnotated(filename)
+		return a.imageService.GetCurrentImage(), nil
+	}
+
+	if shortcut.Destination == "" {
+		return nil, fmt.Errorf("no destination set for shortcut: %s", shortcut.Label)
+	}
+
+	action, err := a.actionRegistry.Get(effectiveAction)
+	if err != nil {
+		return nil, err
+	}
+	destPath, err := action.Execute(srcPath, shortcut.Destination)
+	if err != nil {
+		return nil, fmt.Errorf("action failed: %w", err)
+	}
+	a.undoService.Push(models.UndoEntry{
+		SourcePath: srcPath,
+		DestPath:   destPath,
+		Action:     effectiveAction,
+	})
+	if effectiveAction == models.ActionMove {
+		a.imageService.RemoveCurrent()
+	} else if effectiveAction == models.ActionLabel {
+		label := filepath.Base(shortcut.Destination)
+		_ = a.annotationsService.Annotate(filename, []string{label})
+		a.imageService.MarkAnnotated(filename)
+	}
+	return a.imageService.GetCurrentImage(), nil
 }
 
 // --- Function Buttons ---

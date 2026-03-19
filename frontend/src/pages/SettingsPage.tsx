@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppContext } from "../context/AppContext";
 import { ShortcutTable } from "../components/ShortcutTable";
 import { FunctionButtonTable } from "../components/FunctionButtonTable";
+import { FolderPicker } from "../components/FolderPicker";
 import { models } from "../../wailsjs/go/models";
+import type { ProfileActionType } from "../types";
 import {
   GetProfiles,
   CreateProfile,
   DeleteProfile,
+  DuplicateProfile,
   GetActiveProfile,
   UpdateProfile,
 } from "../../wailsjs/go/main/App";
@@ -16,6 +19,7 @@ export function SettingsPage() {
   const [newProfileName, setNewProfileName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [templateInput, setTemplateInput] = useState("");
 
   const refreshProfiles = async () => {
     const profiles = await GetProfiles();
@@ -46,6 +50,16 @@ export function SettingsPage() {
       showToast(`Profile "${name}" deleted`);
     } catch (err: any) {
       showToast(err?.toString() || "Failed to delete profile");
+    }
+  };
+
+  const handleDuplicateProfile = async (id: string, name: string) => {
+    try {
+      await DuplicateProfile(id);
+      await refreshProfiles();
+      showToast(`Profile "${name}" duplicated`);
+    } catch (err: any) {
+      showToast(err?.toString() || "Failed to duplicate profile");
     }
   };
 
@@ -81,6 +95,12 @@ export function SettingsPage() {
   const activeProfile = state.profiles.find(
     (p) => p.id === state.activeProfileId
   );
+
+  // Sync local template input when the active profile changes
+  useEffect(() => {
+    setTemplateInput(activeProfile?.labelSubfolderTemplate || "");
+  }, [activeProfile?.id, activeProfile?.labelSubfolderTemplate]);
+
 
   return (
     <div className="settings-page">
@@ -139,6 +159,16 @@ export function SettingsPage() {
                   Rename
                 </button>
                 <button
+                  className="edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDuplicateProfile(p.id, p.name);
+                  }}
+                  title="Duplicate profile"
+                >
+                  Duplicate
+                </button>
+                <button
                   className="remove-btn"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -158,46 +188,117 @@ export function SettingsPage() {
 
       {activeProfile && (
         <section className="settings-section">
-          <h3>
-            Shortcuts for "{activeProfile.name}"
-          </h3>
-          <div className="label-mode-selector">
-            <span>Label mode:</span>
-            <label>
-              <input
-                type="radio"
-                name="labelMode"
-                value="single"
-                checked={activeProfile.labelMode !== "multi"}
-                onChange={async () => {
-                  const updated = new models.Profile({
-                    ...activeProfile,
-                    labelMode: "single",
-                  });
-                  await UpdateProfile(updated);
-                  await refreshProfiles();
-                }}
-              />
-              Single
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="labelMode"
-                value="multi"
-                checked={activeProfile.labelMode === "multi"}
-                onChange={async () => {
-                  const updated = new models.Profile({
-                    ...activeProfile,
-                    labelMode: "multi",
-                  });
-                  await UpdateProfile(updated);
-                  await refreshProfiles();
-                }}
-              />
-              Multi
-            </label>
+          <h3>Shortcuts for "{activeProfile.name}"</h3>
+
+          <div className="profile-option-row">
+            <span>Action type:</span>
+            <select
+              value={activeProfile.actionType || "custom"}
+              onChange={async (e) => {
+                const updated = new models.Profile({
+                  ...activeProfile,
+                  actionType: e.target.value as ProfileActionType,
+                });
+                await UpdateProfile(updated);
+                await refreshProfiles();
+              }}
+            >
+              <option value="copy">Copy</option>
+              <option value="move">Move</option>
+              <option value="label">Label</option>
+              <option value="custom">Custom (per shortcut)</option>
+            </select>
           </div>
+
+          {activeProfile.actionType === "label" && (
+            <>
+              <div className="profile-option-row">
+                <span>Label mode:</span>
+                <label>
+                  <input
+                    type="radio"
+                    name="labelMode"
+                    value="single"
+                    checked={activeProfile.labelMode !== "multi"}
+                    onChange={async () => {
+                      const updated = new models.Profile({
+                        ...activeProfile,
+                        labelMode: "single",
+                      });
+                      await UpdateProfile(updated);
+                      await refreshProfiles();
+                    }}
+                  />
+                  Single
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="labelMode"
+                    value="multi"
+                    checked={activeProfile.labelMode === "multi"}
+                    onChange={async () => {
+                      const updated = new models.Profile({
+                        ...activeProfile,
+                        labelMode: "multi",
+                      });
+                      await UpdateProfile(updated);
+                      await refreshProfiles();
+                    }}
+                  />
+                  Multi
+                </label>
+              </div>
+
+              <div className="profile-option-row">
+                <span>Output directory:</span>
+                <FolderPicker
+                  value={activeProfile.labelOutputDir || ""}
+                  onChange={async (path) => {
+                    const updated = new models.Profile({
+                      ...activeProfile,
+                      labelOutputDir: path,
+                    });
+                    await UpdateProfile(updated);
+                    await refreshProfiles();
+                  }}
+                  onClear={async () => {
+                    const updated = new models.Profile({
+                      ...activeProfile,
+                      labelOutputDir: "",
+                    });
+                    await UpdateProfile(updated);
+                    await refreshProfiles();
+                  }}
+                />
+              </div>
+
+              <div className="profile-option-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                <span>Sub-folder template:</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                  <input
+                    type="text"
+                    style={{ flex: 1, fontSize: 13 }}
+                    value={templateInput}
+                    placeholder="e.g. {parent1}  or  {parent2}/{parent1}"
+                    onChange={(e) => setTemplateInput(e.target.value)}
+                    onBlur={async () => {
+                      const updated = new models.Profile({
+                        ...activeProfile,
+                        labelSubfolderTemplate: templateInput,
+                      });
+                      await UpdateProfile(updated);
+                      await refreshProfiles();
+                    }}
+                  />
+                </div>
+                <span className="muted" style={{ fontSize: 11 }}>
+                  {"Use {parent1} = immediate parent, {parent2} = grandparent, … Leave empty for flat output."}
+                </span>
+              </div>
+            </>
+          )}
+
           <ShortcutTable
             profile={activeProfile}
             onProfileUpdated={refreshProfiles}
@@ -217,6 +318,62 @@ export function SettingsPage() {
             profile={activeProfile}
             onProfileUpdated={refreshProfiles}
           />
+        </section>
+      )}
+
+      {activeProfile && (
+        <section className="settings-section">
+          <h3>Extra Image (Debug) for "{activeProfile.name}"</h3>
+          <p className="muted" style={{ marginBottom: 8, fontSize: 12 }}>
+            Show a linked image side-by-side for debugging. The linked image is resolved by
+            walking up the current image's path by the specified depth, then looking under
+            the extra image root for a file with the same stem.
+          </p>
+          <div className="profile-option-row">
+            <span>Extra image root:</span>
+            <FolderPicker
+              value={activeProfile.extraImageRoot || ""}
+              onChange={async (path) => {
+                const updated = new models.Profile({
+                  ...activeProfile,
+                  extraImageRoot: path,
+                });
+                await UpdateProfile(updated);
+                await refreshProfiles();
+              }}
+              onClear={async () => {
+                const updated = new models.Profile({
+                  ...activeProfile,
+                  extraImageRoot: "",
+                });
+                await UpdateProfile(updated);
+                await refreshProfiles();
+              }}
+            />
+          </div>
+          <div className="profile-option-row">
+            <span>Parent depth:</span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              style={{ width: 60 }}
+              value={activeProfile.extraImageLinkDepth || 1}
+              onChange={async (e) => {
+                const depth = parseInt(e.target.value, 10);
+                if (isNaN(depth) || depth < 1) return;
+                const updated = new models.Profile({
+                  ...activeProfile,
+                  extraImageLinkDepth: depth,
+                });
+                await UpdateProfile(updated);
+                await refreshProfiles();
+              }}
+            />
+            <span className="muted" style={{ fontSize: 11 }}>
+              levels up from image to find the matching folder under extra image root
+            </span>
+          </div>
         </section>
       )}
     </div>

@@ -3,6 +3,7 @@ export namespace models {
 	export class FunctionButton {
 	    label: string;
 	    command: string;
+	    key: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new FunctionButton(source);
@@ -12,6 +13,7 @@ export namespace models {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.label = source["label"];
 	        this.command = source["command"];
+	        this.key = source["key"];
 	    }
 	}
 	export class ImageCounts {
@@ -114,6 +116,11 @@ export namespace models {
 	    id: string;
 	    name: string;
 	    labelMode: string;
+	    actionType: string;
+	    labelOutputDir: string;
+	    labelSubfolderTemplate: string;
+	    extraImageRoot: string;
+	    extraImageLinkDepth: number;
 	    shortcuts: Shortcut[];
 	    functionButtons: FunctionButton[];
 	
@@ -126,6 +133,11 @@ export namespace models {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.labelMode = source["labelMode"];
+	        this.actionType = source["actionType"];
+	        this.labelOutputDir = source["labelOutputDir"];
+	        this.labelSubfolderTemplate = source["labelSubfolderTemplate"];
+	        this.extraImageRoot = source["extraImageRoot"];
+	        this.extraImageLinkDepth = source["extraImageLinkDepth"];
 	        this.shortcuts = this.convertValues(source["shortcuts"], Shortcut);
 	        this.functionButtons = this.convertValues(source["functionButtons"], FunctionButton);
 	    }

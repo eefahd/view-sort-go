@@ -49,6 +49,26 @@ func (s *ProfileService) CreateProfile(name string) (models.Profile, error) {
 	return profile, nil
 }
 
+func (s *ProfileService) DuplicateProfile(id string) (models.Profile, error) {
+	profiles := s.configMgr.GetProfiles()
+	for _, p := range profiles {
+		if p.ID == id {
+			dup := p
+			dup.ID = uuid.New().String()
+			dup.Name = p.Name + " (copy)"
+			// Deep-copy slices so the duplicate is independent
+			dup.Shortcuts = append([]models.Shortcut{}, p.Shortcuts...)
+			dup.FunctionButtons = append([]models.FunctionButton{}, p.FunctionButtons...)
+			profiles = append(profiles, dup)
+			if err := s.configMgr.SetProfiles(profiles); err != nil {
+				return models.Profile{}, err
+			}
+			return dup, nil
+		}
+	}
+	return models.Profile{}, fmt.Errorf("profile not found: %s", id)
+}
+
 func (s *ProfileService) UpdateProfile(profile models.Profile) error {
 	profiles := s.configMgr.GetProfiles()
 	for i, p := range profiles {

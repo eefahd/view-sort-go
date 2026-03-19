@@ -102,6 +102,35 @@ func (a *LabelAction) Reverse(entry models.UndoEntry) error {
 	return os.Remove(entry.DestPath)
 }
 
+// WriteSingleLabel writes a label JSON annotation with a given label name to destDir.
+// Used when profile-level label output dir is configured.
+func WriteSingleLabel(src, labelName, destDir string) (string, error) {
+	imageFilename := filepath.Base(src)
+	ext := filepath.Ext(imageFilename)
+	jsonName := strings.TrimSuffix(imageFilename, ext) + ".json"
+	destPath := filepath.Join(destDir, jsonName)
+
+	annotation := labelAnnotation{
+		Image:     imageFilename,
+		Label:     labelName,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	data, err := json.MarshalIndent(annotation, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return "", err
+	}
+
+	if err := os.WriteFile(destPath, data, 0644); err != nil {
+		return "", err
+	}
+	return destPath, nil
+}
+
 type multiLabelAnnotation struct {
 	Image     string   `json:"image"`
 	Labels    []string `json:"labels"`

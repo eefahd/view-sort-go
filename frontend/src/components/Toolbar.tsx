@@ -6,6 +6,7 @@ import {
   GetImageCounts,
   GetUndoCount,
   Undo,
+  ResetAnnotations,
   NextImage,
   PreviousImage,
   SetViewMode,
@@ -80,6 +81,16 @@ export function Toolbar() {
     }
   };
 
+  const handleResetAnnotations = async () => {
+    if (!window.confirm("Reset annotation progress for this folder?\n\nThe .annotations.json file will be deleted. This cannot be undone.")) return;
+    try {
+      await ResetAnnotations();
+      showToast("Annotation progress reset. Reopen the folder to start fresh.");
+    } catch (err: any) {
+      showToast(err?.toString() || "Reset failed");
+    }
+  };
+
   const handleSettings = () => {
     dispatch({ type: "SET_PAGE", page: "settings" });
   };
@@ -132,6 +143,13 @@ export function Toolbar() {
       </button>
       <button onClick={handleUndo} disabled={state.undoCount === 0}>
         Undo ({state.undoCount})
+      </button>
+      <button
+        onClick={handleResetAnnotations}
+        disabled={!state.workingDir}
+        title="Reset all annotation progress for this folder"
+      >
+        Reset
       </button>
       <button onClick={handleSettings}>Settings</button>
     </div>

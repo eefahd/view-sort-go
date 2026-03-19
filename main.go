@@ -15,7 +15,7 @@ var assets embed.FS
 
 func main() {
 	app := NewApp()
-	imageHandler := NewImageHandler(app.imageService)
+	imageHandler := NewImageHandler(app.imageService, app.profileService)
 
 	// Check for a file path passed as CLI argument (e.g. terminal or drag onto icon)
 	if len(os.Args) > 1 {
