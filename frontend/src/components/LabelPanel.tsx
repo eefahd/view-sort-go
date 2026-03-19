@@ -8,7 +8,7 @@ import {
   GetImageLabels,
 } from "../../wailsjs/go/main/App";
 
-export function LabelPanel() {
+export function LabelPanel({ width }: { width?: number }) {
   const { state, dispatch, showToast } = useAppContext();
   const [currentLabels, setCurrentLabels] = useState<string[]>([]);
 
@@ -58,30 +58,23 @@ export function LabelPanel() {
 
   if (!state.labelPanelOpen) {
     return (
-      <div className="panel-collapsed panel-collapsed-right">
-        <button
-          className="panel-toggle-btn"
-          onClick={() => dispatch({ type: "TOGGLE_LABEL_PANEL" })}
-          title="Show shortcuts"
-        >
-          ‹
-        </button>
+      <div
+        className="panel-collapsed panel-collapsed-right"
+        onClick={() => dispatch({ type: "TOGGLE_LABEL_PANEL" })}
+        title="Show shortcuts"
+        style={{ cursor: "pointer" }}
+      >
+        <span className="panel-toggle-btn">‹</span>
         <span className="panel-collapsed-label">Shortcuts</span>
       </div>
     );
   }
 
   return (
-    <div className="label-panel">
-      <div className="panel-header">
+    <div className="label-panel" style={width ? { width, minWidth: width } : undefined}>
+      <div className="panel-header" onClick={() => dispatch({ type: "TOGGLE_LABEL_PANEL" })} title="Collapse">
         <h3>Shortcuts</h3>
-        <button
-          className="panel-toggle-btn"
-          onClick={() => dispatch({ type: "TOGGLE_LABEL_PANEL" })}
-          title="Collapse"
-        >
-          ›
-        </button>
+        <span className="panel-toggle-btn">›</span>
       </div>
 
       {(!activeProfile || activeProfile.shortcuts.length === 0) ? (

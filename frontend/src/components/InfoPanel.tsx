@@ -39,7 +39,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function InfoPanel() {
+export function InfoPanel({ width }: { width?: number }) {
   const { state, dispatch } = useAppContext();
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,30 +58,23 @@ export function InfoPanel() {
 
   if (!state.infoPanelOpen) {
     return (
-      <div className="panel-collapsed panel-collapsed-left">
-        <button
-          className="panel-toggle-btn"
-          onClick={() => dispatch({ type: "TOGGLE_INFO_PANEL" })}
-          title="Show image info"
-        >
-          ›
-        </button>
+      <div
+        className="panel-collapsed panel-collapsed-left"
+        onClick={() => dispatch({ type: "TOGGLE_INFO_PANEL" })}
+        title="Show image info"
+        style={{ cursor: "pointer" }}
+      >
+        <span className="panel-toggle-btn">›</span>
         <span className="panel-collapsed-label">Info</span>
       </div>
     );
   }
 
   return (
-    <div className="info-panel">
-      <div className="panel-header">
+    <div className="info-panel" style={width ? { width, minWidth: width } : undefined}>
+      <div className="panel-header" onClick={() => dispatch({ type: "TOGGLE_INFO_PANEL" })} title="Collapse">
         <h3>Image Info</h3>
-        <button
-          className="panel-toggle-btn"
-          onClick={() => dispatch({ type: "TOGGLE_INFO_PANEL" })}
-          title="Collapse"
-        >
-          ‹
-        </button>
+        <span className="panel-toggle-btn">‹</span>
       </div>
 
       {loading && <p className="muted info-loading">Loading…</p>}

@@ -115,12 +115,34 @@
   text-align: center;
 }
 
+/* Resize handle between panels and viewer */
+.resize-handle {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  position: relative;
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  background: var(--accent);
+  opacity: 0.4;
+}
+
 /* Shared panel styles */
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel-header:hover .panel-toggle-btn {
+  color: var(--text-primary);
 }
 
 .panel-header h3 {
@@ -133,20 +155,12 @@
 }
 
 .panel-toggle-btn {
-  background: transparent;
-  border: none;
   color: var(--text-muted);
   font-size: 18px;
   line-height: 1;
   padding: 2px 4px;
-  cursor: pointer;
   border-radius: 3px;
   flex-shrink: 0;
-}
-
-.panel-toggle-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-tertiary);
 }
 
 .panel-collapsed {
