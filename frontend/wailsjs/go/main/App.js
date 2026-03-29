@@ -34,6 +34,10 @@ export function GetActiveProfile() {
   return window['go']['main']['App']['GetActiveProfile']();
 }
 
+export function GetAvailableLabels() {
+  return window['go']['main']['App']['GetAvailableLabels']();
+}
+
 export function GetCurrentImageInfo() {
   return window['go']['main']['App']['GetCurrentImageInfo']();
 }
@@ -82,6 +86,10 @@ export function GetWorkingDirectory() {
   return window['go']['main']['App']['GetWorkingDirectory']();
 }
 
+export function GoToFilename(arg1) {
+  return window['go']['main']['App']['GoToFilename'](arg1);
+}
+
 export function GoToImage(arg1) {
   return window['go']['main']['App']['GoToImage'](arg1);
 }
@@ -120,6 +128,10 @@ export function SetActiveProfile(arg1) {
 
 export function SetInitialFile(arg1) {
   return window['go']['main']['App']['SetInitialFile'](arg1);
+}
+
+export function SetLabelFilter(arg1) {
+  return window['go']['main']['App']['SetLabelFilter'](arg1);
 }
 
 export function SetViewMode(arg1) {

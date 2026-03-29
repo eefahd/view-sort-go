@@ -21,7 +21,8 @@ interface AppState {
   undoCount: number;
   toast: string | null;
   pendingLabels: string[];
-  viewMode: "all" | "pending";
+  viewMode: "all" | "pending" | "label";
+  labelFilter: string;
   labelPanelOpen: boolean;
   infoPanelOpen: boolean;
 }
@@ -43,7 +44,8 @@ type Action =
     }
   | { type: "TOGGLE_LABEL"; key: string }
   | { type: "CLEAR_LABELS" }
-  | { type: "SET_VIEW_MODE"; mode: "all" | "pending" }
+  | { type: "SET_VIEW_MODE"; mode: "all" | "pending" | "label" }
+  | { type: "SET_LABEL_FILTER"; label: string }
   | { type: "TOGGLE_LABEL_PANEL" }
   | { type: "TOGGLE_INFO_PANEL" };
 
@@ -63,6 +65,7 @@ const initialState: AppState = {
   toast: null,
   pendingLabels: [],
   viewMode: "pending",
+  labelFilter: "",
   labelPanelOpen: loadBool("labelPanelOpen", true),
   infoPanelOpen: loadBool("infoPanelOpen", false),
 };
@@ -104,7 +107,13 @@ function reducer(state: AppState, action: Action): AppState {
     case "CLEAR_LABELS":
       return { ...state, pendingLabels: [] };
     case "SET_VIEW_MODE":
-      return { ...state, viewMode: action.mode };
+      return { ...state, viewMode: action.mode, labelFilter: "" };
+    case "SET_LABEL_FILTER":
+      return {
+        ...state,
+        viewMode: action.label ? "label" : "pending",
+        labelFilter: action.label,
+      };
     case "TOGGLE_LABEL_PANEL": {
       const next = !state.labelPanelOpen;
       localStorage.setItem("labelPanelOpen", String(next));

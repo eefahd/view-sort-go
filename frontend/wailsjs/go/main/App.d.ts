@@ -18,6 +18,8 @@ export function ExecuteShortcutByIndex(arg1:number):Promise<models.ImageInfo>;
 
 export function GetActiveProfile():Promise<models.Profile>;
 
+export function GetAvailableLabels():Promise<Array<string>>;
+
 export function GetCurrentImageInfo():Promise<models.ImageInfo>;
 
 export function GetExtraImagePath():Promise<string>;
@@ -42,6 +44,8 @@ export function GetViewMode():Promise<string>;
 
 export function GetWorkingDirectory():Promise<string>;
 
+export function GoToFilename(arg1:string):Promise<models.ImageInfo>;
+
 export function GoToImage(arg1:number):Promise<models.ImageInfo>;
 
 export function HandleFileOpen(arg1:string):Promise<void>;
@@ -61,6 +65,8 @@ export function SelectWorkingDirectory():Promise<string>;
 export function SetActiveProfile(arg1:string):Promise<void>;
 
 export function SetInitialFile(arg1:string):Promise<void>;
+
+export function SetLabelFilter(arg1:string):Promise<models.ImageInfo>;
 
 export function SetViewMode(arg1:string):Promise<models.ImageInfo>;
 

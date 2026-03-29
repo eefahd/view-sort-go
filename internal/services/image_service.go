@@ -23,7 +23,9 @@ type ImageService struct {
 	allImages    []string          // all image files found on disk
 	images       []string          // currently visible (filtered) list
 	annotated    map[string]bool   // set of annotated filenames
-	viewMode     string            // "pending" or "all"
+	viewMode     string            // "pending", "all", or "label"
+	labelFilter  string            // active label name (when viewMode == "label")
+	labeledSet   map[string]bool   // filenames with the active label
 	currentIndex int
 	processed    int
 }
@@ -126,6 +128,8 @@ func (s *ImageService) SetViewMode(mode string) {
 		oldFilename = s.images[s.currentIndex]
 	}
 	s.viewMode = mode
+	s.labelFilter = ""
+	s.labeledSet = nil
 	s.rebuildFiltered()
 	// Try to keep the same image selected
 	if oldFilename != "" {
@@ -147,13 +151,58 @@ func (s *ImageService) GetViewMode() string {
 	return s.viewMode
 }
 
+func (s *ImageService) SetLabelFilter(label string, labeledSet map[string]bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	oldFilename := ""
+	if len(s.images) > 0 && s.currentIndex < len(s.images) {
+		oldFilename = s.images[s.currentIndex]
+	}
+	if label == "" {
+		s.viewMode = "pending"
+		s.labelFilter = ""
+		s.labeledSet = nil
+	} else {
+		s.viewMode = "label"
+		s.labelFilter = label
+		s.labeledSet = labeledSet
+	}
+	s.rebuildFiltered()
+	if oldFilename != "" {
+		for i, name := range s.images {
+			if name == oldFilename {
+				s.currentIndex = i
+				return
+			}
+		}
+	}
+	if s.currentIndex >= len(s.images) && len(s.images) > 0 {
+		s.currentIndex = len(s.images) - 1
+	}
+}
+
+func (s *ImageService) GetLabelFilter() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.labelFilter
+}
+
 // rebuildFiltered rebuilds s.images from s.allImages based on viewMode and annotations.
 // Must be called with s.mu held.
 func (s *ImageService) rebuildFiltered() {
-	if s.viewMode == "all" {
+	switch s.viewMode {
+	case "all":
 		s.images = make([]string, len(s.allImages))
 		copy(s.images, s.allImages)
-	} else {
+	case "label":
+		s.images = nil
+		for _, name := range s.allImages {
+			if s.labeledSet[name] {
+				s.images = append(s.images, name)
+			}
+		}
+	default: // "pending"
 		s.images = nil
 		for _, name := range s.allImages {
 			if !s.annotated[name] {

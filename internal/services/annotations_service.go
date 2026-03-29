@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 )
 
@@ -90,6 +91,40 @@ func (s *AnnotationsService) Reset() error {
 		return err
 	}
 	return nil
+}
+
+func (s *AnnotationsService) GetFilenamesWithLabel(label string) map[string]bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	set := make(map[string]bool)
+	for filename, labels := range s.annotations {
+		for _, l := range labels {
+			if l == label {
+				set[filename] = true
+				break
+			}
+		}
+	}
+	return set
+}
+
+func (s *AnnotationsService) GetAllLabels() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	labelSet := make(map[string]bool)
+	for _, labels := range s.annotations {
+		for _, l := range labels {
+			labelSet[l] = true
+		}
+	}
+	result := make([]string, 0, len(labelSet))
+	for l := range labelSet {
+		result = append(result, l)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func (s *AnnotationsService) GetAnnotatedSet() map[string]bool {

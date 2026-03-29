@@ -216,6 +216,24 @@ func (a *App) GetViewMode() string {
 	return a.imageService.GetViewMode()
 }
 
+func (a *App) SetLabelFilter(label string) *models.ImageInfo {
+	var labeledSet map[string]bool
+	if label != "" {
+		labeledSet = a.annotationsService.GetFilenamesWithLabel(label)
+	}
+	a.imageService.SetLabelFilter(label, labeledSet)
+	return a.imageService.GetCurrentImage()
+}
+
+func (a *App) GetAvailableLabels() []string {
+	return a.annotationsService.GetAllLabels()
+}
+
+func (a *App) GoToFilename(filename string) *models.ImageInfo {
+	a.imageService.NavigateToFile(filename)
+	return a.imageService.GetCurrentImage()
+}
+
 // --- Annotations ---
 
 func (a *App) GetImageLabels(filename string) []string {
